@@ -14,7 +14,6 @@ Entrez.email = os.getenv("ENTREZ_EMAIL")
 
 if not MINHA_CHAVE:
     print("\n[ERRO] A chave GEMINI_API_KEY nao foi encontrada no arquivo .env!")
-    print("Verifique se o arquivo .env existe e se o nome da chave esta correto.")
     exit()
 
 client = genai.Client(api_key=MINHA_CHAVE)
@@ -32,14 +31,39 @@ class PDF_Personalizado(FPDF):
         self.cliente = cliente_info
 
     def header(self):
+        # 1. Faixa azul do topo
         self.set_fill_color(0, 51, 102) 
-        self.rect(0, 0, 210, 40, 'F')
-        self.set_font("helvetica", 'B', 20)
+        self.rect(0, 0, 210, 45, 'F') 
+        
+        # 2. Lógica de Logotipo Multi-Formato
+        especialidade = self.cliente['especialidade']
+        extensoes = [".png", ".jpg", ".jpeg"]
+        logo_encontrado = None
+
+        for ext in extensoes:
+            caminhos_teste = [f"{especialidade}{ext}", f"{especialidade.lower()}{ext}"]
+            for caminho in caminhos_teste:
+                if os.path.exists(caminho):
+                    logo_encontrado = caminho
+                    break
+            if logo_encontrado: break
+
+        x_texto = 15 
+        if logo_encontrado:
+            self.image(logo_encontrado, x=10, y=5, w=35)
+            x_texto = 55 
+
+        # 3. Título e Subtítulo
+        self.set_font("helvetica", 'B', 18)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 15, "MEDICAL IN-SIGHT PREMIUM", new_x="LMARGIN", new_y="NEXT", align='C')
+        self.set_xy(x_texto, 12)
+        self.cell(0, 10, "MEDICAL IN-SIGHT PREMIUM", align='L')
+        
+        self.ln(10)
+        self.set_x(x_texto)
         self.set_font("helvetica", 'I', 10)
-        self.cell(0, 5, f"Relatorio Exclusivo: {self.cliente['clinica']}", new_x="LMARGIN", new_y="NEXT", align='C')
-        self.ln(20)
+        self.cell(0, 5, f"Relatorio Exclusivo: {self.cliente['clinica']}", align='L')
+        self.ln(25)
 
     def footer(self):
         self.set_y(-15)
@@ -80,14 +104,22 @@ def main():
         artigos_brutos = buscar_pubmed(user['especialidade'], user['limite'])
         
         if artigos_brutos:
-            print("[2/3] Gemini 2.0 analisando e vinculando fontes...")
+            print("[2/3] Gemini 2.0 analisando e estruturando em tópicos...")
             texto_para_ia = "\n\n".join([a['texto'] for a in artigos_brutos])
             
+            # PROMPT ATUALIZADO PARA VOLTAR AOS TÓPICOS
             prompt = f"""
             Aja como um curador cientifico para o(a) {user['nome']}.
-            Traduza e resuma os artigos abaixo.
-            O tom deve ser profissional e focado na especialidade {user['especialidade']}.
-            IMPORTANTE: Termine cada resumo individual com a palavra exata: [FONTE]
+            Traduza e resuma os artigos abaixo para a especialidade {user['especialidade']}.
+            
+            Para CADA artigo, use exatamente esta estrutura:
+            - TÍTULO: (em português)
+            - RESUMO EXECUTIVO: (o que foi estudado)
+            - CONCLUSÃO TÉCNICA: (o desfecho principal)
+            
+            REGRAS CRÍTICAS:
+            1. NÃO escreva introduções ou conclusões generais.
+            2. Termine CADA artigo com a palavra exata: [FONTE]
             
             ARTIGOS:
             {texto_para_ia[:8000]}
@@ -95,7 +127,7 @@ def main():
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             
-            print("[3/3] Renderizando PDF com Links Centralizados...")
+            print("[3/3] Renderizando PDF estruturado...")
             pdf = PDF_Personalizado(user)
             pdf.add_page()
             
@@ -108,13 +140,11 @@ def main():
             
             for i, parte in enumerate(partes_do_texto):
                 if parte.strip():
-                    # Escreve o resumo
                     pdf.set_font("helvetica", size=11)
                     pdf.set_text_color(0, 0, 0)
                     texto_seguro = parte.encode('latin-1', 'replace').decode('latin-1')
                     pdf.multi_cell(0, 8, txt=texto_seguro)
                     
-                    # Escreve o link centralizado (DENTRO do IF para alinhar com o texto)
                     if i < len(artigos_brutos):
                         pdf.ln(2)
                         pdf.set_font("helvetica", 'B', 10)
@@ -122,7 +152,7 @@ def main():
                         link_url = artigos_brutos[i]['link']
                         pdf.cell(0, 10, txt="--- CLIQUE AQUI PARA LER O ESTUDO COMPLETO ---", 
                                  link=link_url, new_x="LMARGIN", new_y="NEXT", align='C')
-                        pdf.ln(10) # Espaço entre artigos
+                        pdf.ln(10)
             
             arquivo = f"Boletim_{user['nome'].replace(' ', '_')}.pdf"
             pdf.output(arquivo)
