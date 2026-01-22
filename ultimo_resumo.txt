@@ -1,0 +1,29 @@
+Com certeza! Aqui está a tradução e resumo do artigo científico em tópicos:
+
+**Tradução do Título:**
+
+Estimativas globais de mortalidade por todas as causas e expectativa de vida, específicas por idade e sexo, para 204 países e territórios e 660 localidades subnacionais, 1950-2023: uma análise demográfica para o Estudo da Carga Global de Doenças (GBD) 2023.
+
+**Resumo:**
+
+*   **1. Objetivo:**
+    *   Estimar a mortalidade por todas as causas e a expectativa de vida, estratificadas por idade e sexo, em nível global, nacional e subnacional, ao longo do período de 1950 a 2023.
+    *   Fornecer uma análise abrangente das tendências demográficas em diferentes regiões do mundo.
+
+*   **2. Metodologia:**
+    *   Análise demográfica abrangente utilizando dados do Estudo da Carga Global de Doenças (GBD) 2023.
+    *   Inclui dados de mortalidade de 204 países e territórios, bem como 660 localidades subnacionais.
+    *   Utilização de modelos estatísticos para estimar a mortalidade e a expectativa de vida, corrigindo dados incompletos e inconsistências.
+
+*   **3. Principais Descobertas:**
+    *   Apresentação de estimativas detalhadas de mortalidade e expectativa de vida por idade, sexo e localização geográfica ao longo do tempo (1950-2023).
+    *   Identificação de padrões e tendências na mortalidade e expectativa de vida em diferentes regiões do mundo.
+    *   Destaque das disparidades na mortalidade e expectativa de vida entre países e dentro deles.
+
+*   **4. Relevância Clínica:**
+    *   As estimativas fornecem informações cruciais para a formulação de políticas de saúde pública e para o planejamento de intervenções voltadas para a redução da mortalidade e o aumento da expectativa de vida.
+    *   Identificação de áreas geográficas e grupos populacionais que necessitam de maior atenção e investimento em saúde.
+    *   Serve como linha de base para avaliar o impacto de intervenções de saúde e programas de prevenção de doenças ao longo do tempo.
+    *   Compreender as tendências demográficas em diferentes regiões pode ajudar os profissionais de saúde a se prepararem para as necessidades futuras de suas comunidades.
+
+Espero que este resumo seja útil!
