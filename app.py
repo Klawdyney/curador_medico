@@ -1,28 +1,53 @@
 import time
 import os
+import smtplib
+from email.message import EmailMessage
 from dotenv import load_dotenv
 from google import genai
 from Bio import Entrez
 from fpdf import FPDF
 
-# 1. Carrega as senhas do arquivo .env (Seguranca)
+# 1. Carrega as configurações de segurança do arquivo .env
 load_dotenv()
 
 # --- CONFIGURAÇÕES ---
 MINHA_CHAVE = os.getenv("GEMINI_API_KEY")
 Entrez.email = os.getenv("ENTREZ_EMAIL")
+EMAIL_DE = os.getenv("EMAIL_REMETENTE")
+SENHA_DE = os.getenv("EMAIL_SENHA")
 
-if not MINHA_CHAVE:
-    print("\n[ERRO] A chave GEMINI_API_KEY nao foi encontrada no arquivo .env!")
+if not MINHA_CHAVE or not EMAIL_DE or not SENHA_DE:
+    print("\n[ERRO] Verifique se as chaves no arquivo .env estão preenchidas corretamente!")
     exit()
 
 client = genai.Client(api_key=MINHA_CHAVE)
 
 # --- BANCO DE DADOS DE CLIENTES (SaaS Model) ---
 clientes = {
-    "1": {"nome": "Dra. Ana Paula", "clinica": "NeuroVida", "especialidade": "Psiquiatria", "plano": "Premium", "limite": 5},
-    "2": {"nome": "Dr. Carlos Alberto", "clinica": "Clinic-Ar", "especialidade": "Cardiologia", "plano": "Basico", "limite": 1},
-    "3": {"nome": "Cunhada Querida", "clinica": "Consultorio Particular", "especialidade": "Psiquiatria", "plano": "Premium", "limite": 3}
+    "1": {
+        "nome": "Seu Nome Teste", 
+        "email": "claudinei.jb@gmail.com", 
+        "especialidade": "Psiquiatria", 
+        "clinica": "NeuroVida Lab", 
+        "plano": "Premium", 
+        "limite": 3
+    },
+    "2": {
+        "nome": "Dr. Carlos Alberto", 
+        "email": "claudinei.jb@gmail.com", 
+        "especialidade": "Cardiologia", 
+        "clinica": "Clinic-Ar", 
+        "plano": "Basico", 
+        "limite": 1
+    },
+    "3": {
+        "nome": "Cunhada Querida", 
+        "email": "claudinei.jb@gmail.com", 
+        "especialidade": "Psiquiatria", 
+        "clinica": "Consultorio Particular", 
+        "plano": "Premium", 
+        "limite": 3
+    }
 }
 
 class PDF_Personalizado(FPDF):
@@ -71,6 +96,25 @@ class PDF_Personalizado(FPDF):
         self.set_text_color(150, 150, 150)
         self.cell(0, 10, f"Preparado para {self.cliente['nome']} | Pagina {self.page_no()}", align='C')
 
+def enviar_email(destinatario, nome_medico, arquivo_pdf):
+    print(f"\n[E-MAIL] Preparando envio para {destinatario}...")
+    try:
+        msg = EmailMessage()
+        msg['Subject'] = f"Sua Curadoria Científica: {nome_medico}"
+        msg['From'] = EMAIL_DE
+        msg['To'] = destinatario
+        msg.set_content(f"Olá {nome_medico},\n\nSeu boletim científico personalizado está pronto e em anexo.\n\nAtenciosamente,\nEquipe Medical In-Sight.")
+
+        with open(arquivo_pdf, 'rb') as f:
+            msg.add_attachment(f.read(), maintype='application', subtype='pdf', filename=arquivo_pdf)
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_DE, SENHA_DE)
+            smtp.send_message(msg)
+        print("--- E-mail enviado com sucesso! ---")
+    except Exception as e:
+        print(f"--- Erro ao enviar e-mail: {e} ---")
+
 def buscar_pubmed(tema, limite):
     print(f"\n[1/3] Buscando {limite} evidencias cientificas sobre: {tema}...")
     handle = Entrez.esearch(db="pubmed", term=tema, retmax=limite, sort="date")
@@ -95,42 +139,34 @@ def main():
     for id_c, info in clientes.items():
         print(f"{id_c}. {info['nome']} ({info['clinica']})")
     
-    escolha = input("\nSelecione o Cliente para gerar o boletim: ")
+    escolha = input("\nSelecione o Cliente: ")
     
     if escolha in clientes:
         user = clientes[escolha]
-        print(f"\nIniciando curadoria para {user['nome']}...")
-        
         artigos_brutos = buscar_pubmed(user['especialidade'], user['limite'])
         
         if artigos_brutos:
-            print("[2/3] Gemini 2.0 analisando e estruturando em tópicos...")
+            print("[2/3] Gemini 2.0 analisando e estruturando...")
             texto_para_ia = "\n\n".join([a['texto'] for a in artigos_brutos])
             
-            # PROMPT ATUALIZADO PARA VOLTAR AOS TÓPICOS
             prompt = f"""
-            Aja como um curador cientifico para o(a) {user['nome']}.
+            Aja como um curador cientifico para {user['nome']}.
             Traduza e resuma os artigos abaixo para a especialidade {user['especialidade']}.
-            
-            Para CADA artigo, use exatamente esta estrutura:
-            - TÍTULO: (em português)
-            - RESUMO EXECUTIVO: (o que foi estudado)
-            - CONCLUSÃO TÉCNICA: (o desfecho principal)
-            
-            REGRAS CRÍTICAS:
-            1. NÃO escreva introduções ou conclusões generais.
-            2. Termine CADA artigo com a palavra exata: [FONTE]
-            
-            ARTIGOS:
-            {texto_para_ia[:8000]}
+            Use esta estrutura para cada artigo:
+            - TÍTULO: (Português)
+            - RESUMO EXECUTIVO:
+            - CONCLUSÃO TÉCNICA:
+            Termine CADA artigo com a palavra: [FONTE]
+            ARTIGOS: {texto_para_ia[:8000]}
             """
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             
-            print("[3/3] Renderizando PDF estruturado...")
+            print("[3/3] Renderizando PDF e automatizando envios...")
             pdf = PDF_Personalizado(user)
             pdf.add_page()
             
+            # Dados da entrega
             pdf.set_font("helvetica", 'B', 12)
             pdf.set_text_color(0, 51, 102)
             pdf.cell(0, 10, f"DATA: {time.strftime('%d/%m/%Y')} | DESTINATARIO: {user['nome'].upper()}", new_x="LMARGIN", new_y="NEXT")
@@ -149,16 +185,23 @@ def main():
                         pdf.ln(2)
                         pdf.set_font("helvetica", 'B', 10)
                         pdf.set_text_color(0, 0, 255)
-                        link_url = artigos_brutos[i]['link']
+                        # CENTRALIZAÇÃO CORRIGIDA: w=0 e align='C'
                         pdf.cell(0, 10, txt="--- CLIQUE AQUI PARA LER O ESTUDO COMPLETO ---", 
-                                 link=link_url, new_x="LMARGIN", new_y="NEXT", align='C')
+                                 link=artigos_brutos[i]['link'], align='C', new_x="LMARGIN", new_y="NEXT")
                         pdf.ln(10)
             
             arquivo = f"Boletim_{user['nome'].replace(' ', '_')}.pdf"
             pdf.output(arquivo)
+            
+            # Automação de E-mail
+            enviar_email(user['email'], user['nome'], arquivo)
+            
+            # Automação de WhatsApp (Gera o link de redirecionamento)
+            texto_wa = f"Olá {user['nome']}, seu boletim científico personalizado está pronto! Acabei de enviar para seu e-mail."
+            link_wa = f"https://wa.me/?text={texto_wa.replace(' ', '%20')}"
+            print(f"\n[WHATSAPP] Clique para avisar o cliente: {link_wa}")
             print(f"\n--- SUCESSO! PDF gerado: {arquivo} ---")
-        else:
-            print("Nenhum artigo novo encontrado.")
+            
     else:
         print("Opcao invalida.")
 
