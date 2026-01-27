@@ -1,17 +1,20 @@
 import sqlite3
 
-def deletar_usuario(nome_aproximado):
+def limpeza_total():
     conexao = sqlite3.connect('medical_insight.db')
     cursor = conexao.cursor()
     
-    # Deleta qualquer usuário que tenha esse nome
-    cursor.execute("DELETE FROM clientes WHERE nome LIKE ?", (f'%{nome_aproximado}%',))
+    # Apaga todos os clientes e todo o histórico de e-mails já enviados
+    cursor.execute("DELETE FROM clientes")
+    cursor.execute("DELETE FROM historico_envios")
+    
+    # Reseta os IDs para o Gabriel ser o ID 1
+    cursor.execute("DELETE FROM sqlite_sequence WHERE name='clientes'")
+    cursor.execute("DELETE FROM sqlite_sequence WHERE name='historico_envios'")
     
     conexao.commit()
-    print(f"Registros contendo '{nome_aproximado}' foram removidos!")
     conexao.close()
+    print("\n✨ O banco de dados está totalmente zerado e pronto!")
 
 if __name__ == "__main__":
-    # Digite o nome ou parte do nome que quer apagar
-    nome = input("Digite o nome do cliente para apagar: ")
-    deletar_usuario(nome)
+    limpeza_total()

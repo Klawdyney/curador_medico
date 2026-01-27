@@ -1,2 +1,4 @@
 .env
+medical_insight.db
+__pycache__/
 *.pdf
