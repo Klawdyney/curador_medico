@@ -1,0 +1,7 @@
+if relatorio_final:
+    # ADICIONE 'logs/' NO INÍCIO DA LINHA ABAIXO:
+    nome_arquivo_txt = f"logs/Relatorio_Envios_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+    try:
+        with open(nome_arquivo_txt, "w", encoding="utf-8") as f:
+            f.write("=== RELATÓRIO DE ENTREGAS MEDICAL IN-SIGHT ===\n")
+            # ... resto do código igual ...
