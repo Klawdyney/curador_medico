@@ -12,6 +12,9 @@ from Bio import Entrez
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
+# --- IMPORTAÇÃO DA PONTE DE DADOS (FASE 3) ---
+from database import get_connection
+
 # --- 1. CONFIGURAÇÃO DE LOGS ---
 logging.basicConfig(
     level=logging.INFO,
@@ -42,45 +45,84 @@ client = genai.Client(api_key=MINHA_CHAVE)
 
 # --- FUNÇÕES DE CONTROLE DE HISTÓRICO ---
 
-def artigo_ja_enviado(email_cliente, pubmed_id): # Troquei cliente_id por email_cliente
+def artigo_ja_enviado(email_cliente, pubmed_id):
+    conexao = get_connection() # Agora usa a ponte inteligente
     try:
-        with sqlite3.connect('medical_insight.db') as conexao:
-            cursor = conexao.cursor()
-            # Ajuste o nome da coluna na consulta também
-            cursor.execute('SELECT 1 FROM historico_envios WHERE email_cliente = ? AND pubmed_id = ?', (email_cliente, pubmed_id))
-            return cursor.fetchone() is not None
+        cursor = conexao.cursor()
+        query = 'SELECT 1 FROM historico_envios WHERE email_cliente = ? AND pubmed_id = ?'
+        
+        # Ajuste para PostgreSQL (Nuvem)
+        if os.getenv("DATABASE_URL"):
+            query = query.replace('?', '%s')
+            
+        cursor.execute(query, (email_cliente, pubmed_id))
+        return cursor.fetchone() is not None
     except Exception as e:
         logging.error(f"Erro ao consultar histórico: {e}")
         return False
+    finally:
+        conexao.close() # Garante o fechamento da conexão
 
 def registrar_envio(email_cliente, pubmed_id, titulo, link):
+    conexao = get_connection() # Usa a ponte inteligente
     try:
-        with sqlite3.connect('medical_insight.db') as conexao:
-            cursor = conexao.cursor()
-            # Adicionamos titulo_artigo e link_pubmed no INSERT
-            cursor.execute('''
-                INSERT INTO historico_envios (email_cliente, pubmed_id, titulo_artigo, link_pubmed) 
-                VALUES (?, ?, ?, ?)
-            ''', (email_cliente, pubmed_id, titulo, link))
-            conexao.commit()
+        cursor = conexao.cursor()
+        query = '''
+            INSERT INTO historico_envios (email_cliente, pubmed_id, titulo_artigo, link_pubmed) 
+            VALUES (?, ?, ?, ?)
+        '''
+        # Ajuste automático para PostgreSQL se necessário
+        if os.getenv("DATABASE_URL"):
+            query = query.replace('?', '%s')
+            
+        cursor.execute(query, (email_cliente, pubmed_id, titulo, link))
+        conexao.commit()
     except Exception as e:
         logging.error(f"Erro ao registrar envio: {e}")
+    finally:
+        conexao.close()
 
 # --- FUNÇÃO DE WHATSAPP (NOVIDADE FASE 3) ---
 
 def enviar_whatsapp_curadoria(numero, nome_medico, especialidade):
-    if not numero or not WA_API_URL:
-        logging.info(f"WhatsApp não configurado ou número ausente para {nome_medico}. Pulando...")
+    # Verifica se as configurações básicas existem
+    if not numero or not WA_API_URL or not WA_API_KEY:
+        logging.info(f"⚠️ WhatsApp ignorado para {nome_medico}: Credenciais ou número ausentes.")
         return
 
-    mensagem = f"Olá Dr(a). {nome_medico}! 🩺\n\nSua curadoria científica premium sobre *{especialidade}* acaba de ser enviada para o seu e-mail com os últimos estudos do PubMed. Boa leitura!"
+    # Limpeza do número: remove caracteres não numéricos
+    numero_limpo = "".join(filter(str.isdigit, str(numero)))
+    
+    mensagem = (
+        f"Olá, Dr(a). {nome_medico}! 🩺\n\n"
+        f"Sua curadoria científica premium sobre *{especialidade}* acaba de ser enviada para o seu e-mail "
+        f"com os últimos estudos do PubMed. Boa leitura!"
+    )
+    
+    payload = {
+        "number": numero_limpo,
+        "text": mensagem
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "apikey": WA_API_KEY
+    }
     
     try:
-        # Exemplo de chamada preparada para Evolution API / Twilio
-        # requests.post(f"{WA_API_URL}/message/sendText", headers={"apikey": WA_API_KEY}, json={"number": numero, "text": mensagem})
-        logging.info(f"Notificação de WhatsApp preparada para {numero} (Aguardando API real).")
+        # Endpoint de disparo (Exemplo: Evolution API)
+        # Substitua 'sua_instancia' pelo nome da sua instância real
+        url_final = f"{WA_API_URL}/message/sendText/sua_instancia" 
+        
+        response = requests.post(url_final, headers=headers, json=payload, timeout=10)
+        
+        if response.status_code in [200, 201]:
+            logging.info(f"✅ Notificação WhatsApp enviada para {nome_medico} ({numero_limpo}).")
+        else:
+            logging.error(f"❌ Falha no WhatsApp: Status {response.status_code} - {response.text}")
+            
     except Exception as e:
-        logging.error(f"Erro ao enviar WhatsApp: {e}")
+        logging.error(f"❌ Erro de conexão com a API de WhatsApp: {e}")
 
 # --- FUNÇÕES DE DADOS ---
 # --- LOGICA DE NUANCES POR ESPECIALIDADE ---
@@ -104,21 +146,26 @@ def obter_nuance_especialidade(especialidade):
     }
     return nuances.get(esp_chave, "- Use jargão médico acadêmico sênior e terminologia DeCS/MeSH padrão.")
 def carregar_clientes_do_banco():
-    nome_banco = 'medical_insight.db'
+    # Agora usamos a nossa ponte que decide entre Local ou Nuvem
+    conexao = get_connection() 
     try:
-        with sqlite3.connect(nome_banco) as conexao:
-            cursor = conexao.cursor()
-            # AGORA BUSCA A COLUNA WHATSAPP TAMBÉM
-            cursor.execute('SELECT id, nome, email, especialidade, clinica, plano, limite, keywords, whatsapp FROM clientes')
-            linhas = cursor.fetchall()
-            return {str(l[0]): {
-                "nome": l[1], "email": l[2], "especialidade": l[3], 
-                "clinica": l[4], "plano": l[5], "limite": l[6], 
-                "keywords": l[7], "whatsapp": l[8] 
-            } for l in linhas}
+        cursor = conexao.cursor()
+        # A consulta permanece a mesma para garantir compatibilidade 
+        cursor.execute('SELECT id, nome, email, especialidade, clinica, plano, limite, keywords, whatsapp FROM clientes')
+        linhas = cursor.fetchall()
+        
+        # Mantemos a estrutura de dicionário que seu sistema já utiliza 
+        return {str(l[0]): {
+            "nome": l[1], "email": l[2], "especialidade": l[3], 
+            "clinica": l[4], "plano": l[5], "limite": l[6], 
+            "keywords": l[7], "whatsapp": l[8] 
+        } for l in linhas}
     except Exception as e:
         logging.error(f"Falha ao ler banco de dados: {e}")
         return {}
+    finally:
+        # Essencial na Fase 3: fechar a conexão para não esgotar o limite da nuvem
+        conexao.close()
 
 # --- CLASSE DE PDF (DESIGN ORIGINAL INTEGRAL) ---
 
@@ -169,18 +216,19 @@ class PDF_Personalizado(FPDF):
     def footer(self):
         # Posiciona a 1,5 cm do fim da página
         self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.set_text_color(128, 128, 128) # Cor cinza discreta
+        # Ajuste 1: Trocamos 'Arial' por 'helvetica' (padrão moderno)
+        self.set_font('helvetica', 'I', 8) 
+        self.set_text_color(128, 128, 128) 
         
         # Linha fina separadora
         self.line(10, self.get_y(), 200, self.get_y())
         
-        # Texto do Rodapé (Lado Esquerdo: Página | Lado Direito: Selo de Qualidade)
-        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'L')
+        # Ajuste 2: Atualizamos os parâmetros de alinhamento para o padrão fpdf2
+        self.cell(0, 10, f'Página {self.page_no()}', align='L', new_x="RIGHT", new_y="TOP")
         
-        # O Selo de Qualidade (Alinhado à direita)
-        self.set_text_color(0, 51, 102) # Azul Marinho para o selo
-        self.cell(0, 10, '[ Verified by Medical Expert ] Curadoria Algorítmica | Validação Clínica Humana  ', 0, 0, 'R')
+        # O Selo de Qualidade
+        self.set_text_color(0, 51, 102) 
+        self.cell(0, 10, '[ Verified by Medical Expert ] Curadoria Algorítmica | Validação Clínica Humana  ', align='R')
 
 # --- LOGICA DE COMUNICAÇÃO ---
 
@@ -356,7 +404,7 @@ def main():
                 logging.info(f"💡 Poucas novidades recentes para {user['nome']}. Buscando na fila de 4 anos...")
                 artigos_n2 = buscar_pubmed(termo_final, limite_busca=20, dias=1460)
                 for art in artigos_n2:
-                    if not artigo_ja_enviado(id_c, art['id']) and art['id'] not in [a['id'] for a in artigos_ineditos]:
+                    if not artigo_ja_enviado(user['email'], art['id']) and art['id'] not in [a['id'] for a in artigos_ineditos]:
                         artigos_ineditos.append(art)
 
             # NÍVEL 3: Se MESMO ASSIM não houver NADA, ativa o Radar Positivo (Clássicos de 20 anos)

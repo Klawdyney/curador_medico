@@ -1,6 +1,7 @@
 streamlit
 fpdf2
-google-generativeai
+google-genai
 biopython
 python-dotenv
 requests
+psycopg2-binary
