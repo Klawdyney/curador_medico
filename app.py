@@ -268,9 +268,9 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         """
         msg.add_alternative(html_content, subtype='html')
         
-        # AQUI ESTÁ A CORREÇÃO (Porta 587 + starttls)
+        # Mudança: Usar SMTP (não SSL) na porta 587 e adicionar starttls()
         with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-            smtp.starttls()
+            smtp.starttls()  # <--- LINHA NOVA E ESSENCIAL
             smtp.login(EMAIL_DE, SENHA_DE)
             smtp.send_message(msg)
     except: pass
