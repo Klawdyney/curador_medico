@@ -245,9 +245,9 @@ def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
         with open(arquivo_pdf, 'rb') as f:
             msg.add_attachment(f.read(), maintype='application', subtype='pdf', filename=arquivo_pdf)
 
-        # AQUI ESTÁ A CORREÇÃO (Porta 587 + starttls)
+        # Mudança: Usar SMTP (não SSL) na porta 587 e adicionar starttls()
         with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-            smtp.starttls()
+            smtp.starttls()  # <--- LINHA NOVA E ESSENCIAL
             smtp.login(EMAIL_DE, SENHA_DE)
             smtp.send_message(msg)
             
