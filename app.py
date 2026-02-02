@@ -245,9 +245,9 @@ def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
         with open(arquivo_pdf, 'rb') as f:
             msg.add_attachment(f.read(), maintype='application', subtype='pdf', filename=arquivo_pdf)
 
-        # CORREÇÃO: Usar SMTP normal na porta 587 com starttls
+        # A SOLUÇÃO: SMTP (sem SSL no nome), porta 587 e starttls
         with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-            smtp.starttls()  # Comando de segurança obrigatório
+            smtp.starttls()
             smtp.login(EMAIL_DE, SENHA_DE)
             smtp.send_message(msg)
             
@@ -268,9 +268,9 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         """
         msg.add_alternative(html_content, subtype='html')
         
-        # CORREÇÃO: Usar SMTP normal na porta 587 com starttls
+        # A SOLUÇÃO NOVAMENTE
         with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-            smtp.starttls()  # Comando de segurança obrigatório
+            smtp.starttls()
             smtp.login(EMAIL_DE, SENHA_DE)
             smtp.send_message(msg)
     except: pass
