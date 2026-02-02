@@ -245,9 +245,12 @@ def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
         with open(arquivo_pdf, 'rb') as f:
             msg.add_attachment(f.read(), maintype='application', subtype='pdf', filename=arquivo_pdf)
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        # AQUI ESTÁ A CORREÇÃO (Porta 587 + starttls)
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.starttls()
             smtp.login(EMAIL_DE, SENHA_DE)
             smtp.send_message(msg)
+            
     except Exception as e:
         logging.error(f"Erro e-mail: {e}")
 
@@ -264,7 +267,10 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         </body></html>
         """
         msg.add_alternative(html_content, subtype='html')
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        
+        # AQUI ESTÁ A CORREÇÃO (Porta 587 + starttls)
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.starttls()
             smtp.login(EMAIL_DE, SENHA_DE)
             smtp.send_message(msg)
     except: pass
