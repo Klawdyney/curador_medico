@@ -1,5 +1,0 @@
-=== RELATÓRIO DE ENTREGAS MEDICAL IN-SIGHT ===
-Data da Rodada: 01/02/2026 15:55:21
----------------------------------------------
-
-✅ [SUCESSO] Miguel Peixoto (Cardiologia) - E-mail enviado.

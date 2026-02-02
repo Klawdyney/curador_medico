@@ -1,5 +1,0 @@
-=== RELATÓRIO DE ENTREGAS MEDICAL IN-SIGHT ===
-Data da Rodada: 29/01/2026 13:54:24
----------------------------------------------
-
-❌ [ERRO] Claudinei Barros Jorge - Motivo: TTF Font file not found: DejaVuSans.ttf

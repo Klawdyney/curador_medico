@@ -1,4 +1,9 @@
-.env
-medical_insight.db
-__pycache__/
+# Ignorar arquivos gerados
 *.pdf
+historico_logs/
+medical_insight_operacao.log
+medical_insight.db
+
+# Ignorar pastas de sistema
+__pycache__/
+.env

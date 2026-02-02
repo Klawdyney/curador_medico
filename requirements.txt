@@ -1,3 +1,6 @@
 streamlit
-fpdf
+fpdf2
 google-generativeai
+biopython
+python-dotenv
+requests
