@@ -6,6 +6,7 @@ import sqlite3
 import re
 import logging
 import requests
+import socket  # <--- ADICIONE ESTA IMPORTAÇÃO
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from google import genai
@@ -15,6 +16,17 @@ from fpdf.enums import XPos, YPos
 
 # --- IMPORTAÇÃO DA PONTE DE DADOS ---
 from database import get_connection
+
+# --- CORREÇÃO DE REDE (PATCH IPV4) ---  <--- ADICIONE ESTE BLOCO INTEIRO
+# Isso obriga o robô a usar IPv4 e resolve o erro [Errno 101]
+def force_ipv4_socket_getaddrinfo(*args, **kwargs):
+    responses = socket_getaddrinfo_original(*args, **kwargs)
+    return [r for r in responses if r[0] == socket.AF_INET]
+
+if socket.getaddrinfo != force_ipv4_socket_getaddrinfo:
+    socket_getaddrinfo_original = socket.getaddrinfo
+    socket.getaddrinfo = force_ipv4_socket_getaddrinfo
+# -------------------------------------- <--- FIM DO BLOCO
 
 # --- 1. CONFIGURAÇÃO DE LOGS ---
 # Ajustado para exibir logs no painel do Railway
