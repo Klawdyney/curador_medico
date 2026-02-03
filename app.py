@@ -6,7 +6,6 @@ import sqlite3
 import re
 import logging
 import requests
-import socket  # <--- ADICIONE ESTA IMPORTAÇÃO
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from google import genai
@@ -16,18 +15,6 @@ from fpdf.enums import XPos, YPos
 
 # --- IMPORTAÇÃO DA PONTE DE DADOS ---
 from database import get_connection
-
-# --- CORREÇÃO DE REDE (PATCH IPV4 - VERSÃO ROBUSTA) ---
-# Esta versão previne erros de recarregamento do Streamlit
-if not hasattr(socket, 'original_getaddrinfo'):
-    socket.original_getaddrinfo = socket.getaddrinfo
-
-def force_ipv4_socket_getaddrinfo(*args, **kwargs):
-    responses = socket.original_getaddrinfo(*args, **kwargs)
-    return [r for r in responses if r[0] == socket.AF_INET]
-
-socket.getaddrinfo = force_ipv4_socket_getaddrinfo
-# ------------------------------------------------------
 
 # --- 1. CONFIGURAÇÃO DE LOGS ---
 # Ajustado para exibir logs no painel do Railway
