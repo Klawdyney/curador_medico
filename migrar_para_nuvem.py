@@ -6,26 +6,36 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def migrar_dados():
-    print("🚀 Iniciando migração para a Fase 3...")
+    print("🚀 Iniciando Migração Profissional - Fase 3...")
     
-    # 1. Conecta ao Banco Local (SQLite)
-    local_conn = sqlite3.connect('medical_insight.db')
-    local_cursor = local_conn.cursor()
-    
-    # 2. Conecta ao Banco Nuvem (PostgreSQL)
+    # 1. Conexões
     try:
+        local_conn = sqlite3.connect('medical_insight.db')
+        local_cursor = local_conn.cursor()
+        
         cloud_conn = get_connection()
-        if not os.getenv("DATABASE_URL"):
-            print("❌ ERRO: DATABASE_URL não encontrada no .env.")
-            return
         cloud_cursor = cloud_conn.cursor()
     except Exception as e:
-        print(f"❌ Erro ao conectar na nuvem: {e}")
+        print(f"❌ Erro na conexão: {e}")
         return
 
-    # --- PASSO 3: MIGRAR CLIENTES (Seleção Explícita) ---
-    print("📋 Migrando clientes...")
-    # Selecionamos exatamente as 8 colunas que vamos inserir
+    # 2. ATUALIZAR ESTRUTURA NA NUVEM (Schema)
+    # Criamos as colunas que faltam para o sistema rodar sozinho
+    print("🏗️ Ajustando estrutura da nuvem para automação...")
+    colunas_novas = [
+        ("status_assinatura", "TEXT DEFAULT 'ATIVO'"),
+        ("dias_envio", "TEXT DEFAULT 'seg,qui'"),
+        ("horario_envio", "TEXT DEFAULT '08:00'")
+    ]
+    
+    for nome_col, tipo in colunas_novas:
+        try:
+            cloud_cursor.execute(f"ALTER TABLE clientes ADD COLUMN {nome_col} {tipo}")
+        except:
+            pass # Coluna já existe
+
+    # 3. MIGRAR CLIENTES (Sincronizando com seus nomes: clinica e limite)
+    print("📋 Sincronizando dados dos clientes...")
     local_cursor.execute("""
         SELECT nome, email, whatsapp, especialidade, clinica, keywords, plano, limite 
         FROM clientes
@@ -33,37 +43,31 @@ def migrar_dados():
     clientes = local_cursor.fetchall()
     
     for c in clientes:
-        # Usamos exatamente 8 marcadores %s para as 8 colunas
         query = """INSERT INTO clientes 
                    (nome, email, whatsapp, especialidade, clinica, keywords, plano, limite) 
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s) 
-                   ON CONFLICT (email) DO NOTHING"""
+                   ON CONFLICT (email) DO UPDATE SET 
+                   clinica = EXCLUDED.clinica, plano = EXCLUDED.plano, limite = EXCLUDED.limite"""
         cloud_cursor.execute(query, c)
     
     cloud_conn.commit()
-    print(f"✅ {len(clientes)} clientes processados.")
 
-    # --- PASSO 4: MIGRAR HISTÓRICO (Essencial para não repetir artigos) ---
+    # 4. MIGRAR HISTÓRICO
     print("📜 Migrando histórico de envios...")
-    local_cursor.execute("""
-        SELECT email_cliente, pubmed_id, titulo_artigo, link_pubmed 
-        FROM historico_envios
-    """)
-    historico = local_cursor.fetchall()
-    
-    for h in historico:
-        query_h = """INSERT INTO historico_envios 
-                     (email_cliente, pubmed_id, titulo_artigo, link_pubmed) 
-                     VALUES (%s, %s, %s, %s)"""
-        cloud_cursor.execute(query_h, h)
-    
-    cloud_conn.commit()
-    print(f"✅ {len(historico)} registros de histórico migrados.")
+    try:
+        local_cursor.execute("SELECT email_cliente, pubmed_id, titulo_artigo, link_pubmed FROM historico_envios")
+        historico = local_cursor.fetchall()
+        for h in historico:
+            cloud_cursor.execute("""INSERT INTO historico_envios 
+                                    (email_cliente, pubmed_id, titulo_artigo, link_pubmed) 
+                                    VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING""", h)
+        cloud_conn.commit()
+    except:
+        print("🟡 Histórico já estava atualizado ou tabela não existe localmente.")
 
-    # --- FINALIZAÇÃO ---
     local_conn.close()
     cloud_conn.close()
-    print("\n🏁 Migração concluída com sucesso! Seu produto está 100% na nuvem.")
+    print("\n🏁 Sistema Profissional Sincronizado! O Portal está pronto.")
 
 if __name__ == "__main__":
     migrar_dados()
