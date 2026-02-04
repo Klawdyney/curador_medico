@@ -370,12 +370,16 @@ def main():
     relatorio_final = []
     # ---------------------------------------------------------
 
-    print("\n" + "="*40 + "\n   PORTAL MEDICAL IN-SIGHT   \n" + "="*40)
-    for id_c, info in clientes.items():
-        print(f"{id_c}. {info['nome']} - {info['especialidade']}")
-    
-    escolha = input("\nSelecione o Cliente pelo ID (ou 'todos'): ")
-    ids_para_processar = clientes.keys() if escolha.lower() == 'todos' else [escolha]
+    st.title("🏥 Portal Medical In-Sight")
+
+    # Prepara as opções para o menu visual (substitui o loop de print da imagem)
+    opcoes = {f"{info['nome']} - {info['especialidade']}": id_c for id_c, info in clientes.items()}
+    escolha = st.selectbox("Selecione o Cliente:", ["todos"] + list(opcoes.keys()))
+
+    # O botão substitui o input() e impede que o site fique em branco
+    if st.button("🚀 Iniciar Curadoria Científica"):
+    # Define os IDs baseado na escolha do menu
+        ids_para_processar = list(clientes.keys()) if escolha == 'todos' else [opcoes[escolha]]
 
     for id_c in ids_para_processar:
         if id_c not in clientes: continue
