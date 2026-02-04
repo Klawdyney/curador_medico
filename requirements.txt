@@ -5,7 +5,7 @@ attrs==25.4.0
 biopython==1.86
 blinker==1.9.0
 cachetools==6.2.4
-certifi==2026.1.4
+certifi
 cffi==2.0.0
 charset-normalizer==3.4.4
 click==8.3.1
@@ -37,7 +37,7 @@ jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 MarkupSafe==3.0.3
 narwhals==2.15.0
-numpy==2.4.1
+numpy
 packaging==26.0
 pandas==2.3.3
 pillow==12.1.0
