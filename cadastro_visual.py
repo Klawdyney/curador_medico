@@ -45,11 +45,14 @@ with st.form("form_oficial", clear_on_submit=False):
     keywords = st.text_area("Keywords de Interesse (separe por vírgula):", 
                             placeholder="Ex: Heart Failure, Guidelines, Immunotherapy")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3) # Mudamos para 3 colunas
     with col1:
         plano = st.selectbox("Plano Contratado:", ["Básico", "Premium", "Estudante"])
     with col2:
         dia_envio = st.selectbox("Dia do Boletim:", ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"])
+    with col3:
+        # Novo campo para você escolher a hora do teste!
+        horario_envio = st.selectbox("Horário:", ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00"])
 
     submit = st.form_submit_button("Finalizar Cadastro")
 
@@ -102,7 +105,7 @@ with st.form("form_oficial", clear_on_submit=False):
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (nome, email, whatsapp_limpo, especialidade, clinica, 
-                      keywords, plano, limite_artigos, dia_envio, "08:00"))
+                      keywords, plano, limite_artigos, dia_envio, horario_envio)) # Mudado aqui!
                 
                 conn.commit()
                 conn.close()
