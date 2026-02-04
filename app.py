@@ -387,6 +387,7 @@ def main():
             
             try:
                 user = clientes[id_c]
+                st.write(f"⚙️ Processando agora: Dr. {user['nome']}...")
                 termo_final = f"{user['especialidade']} AND ({user['keywords']})" if user['keywords'] else user['especialidade']
                 
                 # --- LÓGICA DE BUSCA EM 3 NÍVEIS (CORRIGIDA) ---
@@ -521,6 +522,7 @@ def main():
                     arquivo = f"Boletim_{user['nome'].replace(' ', '_')}.pdf"
                     pdf.output(arquivo)
                     enviar_email_pdf(user['email'], user['nome'], arquivo)
+                    st.success(f"✅ Boletim enviado com sucesso para {user['nome']}!")
                     enviar_whatsapp_curadoria(user['whatsapp'], user['nome'], user['especialidade'])
                     print(f">>> Sucesso total para: {user['nome']}")
                     relatorio_final.append(f"✅ [SUCESSO] {user['nome']} ({user['especialidade']}) - E-mail enviado.")
