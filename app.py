@@ -1,10 +1,11 @@
+import streamlit as st  # <-- A LINHA QUE FALTAVA
 import time
 import os
 import smtplib
 import sqlite3
 import re
 import logging
-import requests # Necessário para a Fase 3
+import requests 
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from google import genai
