@@ -1,16 +1,17 @@
 import database_manager as db
-from app import processar_medico_completo # Importa a função mestre validada
+from app import processar_medico_completo
 from datetime import datetime
 import time
 import logging
 import sys
 
-# Configuração de logs profissional
+# --- CONFIGURAÇÃO DE LOGS ---
+# Ajustado para exibir logs no painel do GitHub Actions
 logging.basicConfig(
     level=logging.INFO, 
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout) # Garante que apareça no terminal da nuvem
+        logging.StreamHandler(sys.stdout)
     ]
 )
 
@@ -19,13 +20,21 @@ def obter_dia_atual_sigla():
     dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
     return dias[datetime.now().weekday()]
 
-def executar_rotina_agendada():
-    """Lógica validada de verificação e envio."""
+def tarefa_na_nuvem():
+    """
+    MODO NUVEM: Esta função roda, verifica os agendamentos da hora cheia,
+    processa os envios e FINALIZA. 
+    Não usamos 'while True' aqui para não travar o servidor do GitHub.
+    """
+    print("☁️ INICIANDO TAREFA AGENDADA NA NUVEM...")
+    
     dia_hoje = obter_dia_atual_sigla()
-    # Pega a hora atual no formato exato do banco (ex: 14:00)
+    
+    # Pega a hora cheia atual (ex: Se rodar às 14:05, pega "14:00")
+    # Isso garante o sincronismo com o agendamento do GitHub
     hora_agora = datetime.now().strftime("%H:00")
     
-    logging.info(f"🔎 Verificando agendamentos para {dia_hoje.upper()} às {hora_agora}...")
+    logging.info(f"🔎 Verificando envios para {dia_hoje.upper()} às {hora_agora}...")
     
     try:
         # 1. Busca todos os médicos ativos no Supabase
@@ -47,47 +56,21 @@ def executar_rotina_agendada():
             try:
                 logging.info(f"🚀 Iniciando curadoria: Dr(a). {medico['nome']} ({medico['especialidade']})")
                 
-                # Chama a função MESTRA do app.py (PubMed -> Tradução -> Gemini -> PDF -> Envio)
+                # Chama a função MESTRA validada do app.py
                 resultado = processar_medico_completo(medico)
                 
                 logging.info(f"🏁 Status Final: {resultado}")
                 
-                # Pausa técnica de 5s para não sobrecarregar APIs (Google/PubMed)
+                # Pausa técnica de 5s para não sobrecarregar APIs
                 time.sleep(5)
                 
             except Exception as e:
                 logging.error(f"❌ Erro ao processar {medico['nome']}: {e}")
 
     except Exception as e:
-        logging.error(f"⚠️ Erro de conexão com o banco: {e}")
-
-def iniciar_sentinela():
-    """O Loop Infinito que mantém o robô vivo na nuvem."""
-    print("\n" + "="*40)
-    print("🤖 ROBÔ SENTINELA ATIVADO (Modo Contínuo)")
-    print("👀 Monitorando relógio... Disparos apenas no minuto :00")
-    print("="*40 + "\n")
-
-    while True:
-        agora = datetime.now()
-        
-        # O PULO DO GATO: Só trabalha se for o minuto 00 (Hora cheia)
-        if agora.minute == 0:
-            logging.info(f"⏰ HORA CHEIA DETECTADA ({agora.strftime('%H:%M')})! Acordando worker...")
-            executar_rotina_agendada()
-            
-            # Dorme 65 segundos para garantir que saia do minuto 00 e não repita
-            logging.info("💤 Ciclo concluído. Dormindo até a próxima hora...")
-            time.sleep(65)
-        
-        else:
-            # Se não for hora cheia, dorme o tempo que falta para o próximo minuto
-            # Isso economiza CPU na nuvem e deixa o log limpo
-            segundos_para_proximo_minuto = 60 - agora.second
-            time.sleep(segundos_para_proximo_minuto)
+        logging.error(f"⚠️ Erro de conexão com o banco ou processamento geral: {e}")
 
 if __name__ == "__main__":
-    try:
-        iniciar_sentinela()
-    except KeyboardInterrupt:
-        print("\n🛑 Sentinela desligado manualmente.")
+    # Removemos o 'iniciar_sentinela' e o 'while True'.
+    # Agora ele roda uma vez e encerra, perfeito para automação.
+    tarefa_na_nuvem()
