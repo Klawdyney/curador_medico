@@ -1,38 +1,54 @@
+import database_manager as db
+from app import processar_medico_completo # Importa a função mestre do seu app.py
+from datetime import datetime
+import time
 import logging
-from datetime import datetime, timedelta
-from app import carregar_clientes_do_banco, processar_medico_completo
 
+# Configuração de logs para acompanhar o robô no terminal
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def executar_robot_curadoria():
-    logging.info("🤖 Robo de Curadoria iniciado...")
-    clientes = carregar_clientes_do_banco()
+def obter_dia_atual_sigla():
+    """Converte o dia da semana para a sigla do banco (seg, ter, etc)."""
+    dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
+    return dias[datetime.now().weekday()]
+
+def executar_rotina_agendada():
+    dia_hoje = obter_dia_atual_sigla()
+    # Pega a hora atual no formato 10:00, 11:00, etc.
+    hora_agora = datetime.now().strftime("%H:00")
     
-    # Ajuste de fuso: Brasil (Ipatinga/Timoteo)
-    agora_brasil = datetime.now() - timedelta(hours=3)
-    dias_map = {'mon':'seg','tue':'ter','wed':'qua','thu':'qui','fri':'sex','sat':'sab','sun':'dom'}
-    dia_busca = dias_map.get(agora_brasil.strftime('%a').lower())
-    hora_atual = agora_brasil.strftime('%H:00')
+    logging.info(f"🚀 Iniciando ciclo de curação para {dia_hoje.upper()} às {hora_agora}...")
+    
+    # 1. Busca todos os médicos ativos no Supabase
+    medicos = db.buscar_todos_os_medicos_ativos()
+    
+    # 2. Filtra apenas os médicos agendados para este DIA e HORA
+    # Isso encontrará o cadastro 'Claudinei' que você fez para as 10:00
+    medicos_tarefa = [
+        m for m in medicos 
+        if m['dia_envio'] == dia_hoje and m['horario_envio'] == hora_agora
+    ]
+    
+    if not medicos_tarefa:
+        logging.info(f"📭 Nenhum médico agendado para o horário de {hora_agora}.")
+        return
 
-    logging.info(f"📅 Relogio: {dia_busca} as {hora_atual} (Brasilia)")
+    logging.info(f"🩺 {len(medicos_tarefa)} médico(s) encontrado(s). Iniciando processamento...")
 
-    for id_c, user in clientes.items():
-        # LOG DE SEGURANÇA: Mostra todos os dados do medico no terminal
-        logging.info(f"📝 Dados lidos para {user.get('nome')}: {user}")
-
-        # Tenta ler com os dois nomes possiveis (o antigo e o novo do banco)
-        db_dia = str(user.get('dia_envio', user.get('dias', ''))).lower()
-        db_hora = str(user.get('horario_envio', user.get('horario', ''))).strip()
-        
-        if dia_busca in db_dia and db_hora == hora_atual:
-            try:
-                logging.info(f"🚀 MATCH ENCONTRADO! Iniciando motor para: {user['nome']}")
-                resultado = processar_medico_completo(user)
-                logging.info(f"🏁 Resultado: {resultado}")
-            except Exception as e:
-                logging.error(f"❌ Erro no envio: {e}")
-        else:
-            logging.info(f"⏭️ Pulando {user['nome']}: Banco diz {db_dia}/{db_hora} mas agora e {dia_busca}/{hora_atual}")
+    for medico in medicos_tarefa:
+        try:
+            logging.info(f"🔄 Processando curadoria: Dr(a). {medico['nome']} ({medico['especialidade']})")
+            
+            # Chama a função que faz PubMed -> Gemini -> PDF -> Envio
+            resultado = processar_medico_completo(medico)
+            
+            logging.info(f"Status: {resultado}")
+            
+            # Pausa de segurança para não sobrecarregar as APIs
+            time.sleep(5)
+            
+        except Exception as e:
+            logging.error(f"❌ Erro crítico ao processar {medico['nome']}: {e}")
 
 if __name__ == "__main__":
-    executar_robot_curadoria()
+    executar_rotina_agendada()

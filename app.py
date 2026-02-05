@@ -136,6 +136,53 @@ def obter_nuance_especialidade(especialidade):
         "Dermatologia": """
             - Foco em: 'Dermatoscopia', 'Imunofenotipagem', 'Anátomo-patológico'.
             - Termos obrigatórios: 'Lesão elementar', 'Fisiopatologia cutânea', 'Manejo terapêutico tópico'.
+        """,
+        "Oftalmologia": """
+            - Foco em: 'OCT (Tomografia de Coerência Óptica)', 'Pressão Intraocular (PIO)', 'Aguidade Visual'.
+            - Termos obrigatórios: 'Fundo de olho', 'Biomicroscopia', 'Segmento anterior/posterior'.
+            - Priorize estudos sobre degeneração macular, glaucoma e retinopatias.
+        """,
+        "Cirurgia geral": """
+            - Foco em: 'Técnicas minimamente invasivas', 'Morbimortalidade pós-operatória', 'Videolaparoscopia'.
+            - Termos obrigatórios: 'Manejo cirúrgico', 'Complicações pós-operatórias', 'Tempo cirúrgico'.
+            - Destaque avanços em cirurgia robótica e trauma.
+        """,
+        "Ginecologia e obstetrícia": """
+            - Foco em: 'Desfechos perinatais', 'Vitalidade fetal', 'Assistência pré-natal'.
+            - Termos obrigatórios: 'Ciclo gravídico-puerperal', 'Hormonioterapia', 'Medicina Fetal'.
+            - Priorize diretrizes da FEBRASGO e ACOG.
+        """,
+        "Radiologia": """
+            - Foco em: 'Sensibilidade e Especificidade', 'Laudo estruturado', 'Achados incidentais'.
+            - Termos obrigatórios: 'Critérios BI-RADS/LI-RADS/TI-RADS', 'Meio de contraste', 'Modalidade de imagem (RM/TC/US)'.
+            - Enfatize a relevância clínica de novos protocolos de imagem.
+        """,
+        "Anestesiologia": """
+            - Foco em: 'Manejo de via aérea', 'Estabilidade hemodinâmica perioperatória', 'Analgesia multimodal'.
+            - Termos obrigatórios: 'Recuperação pós-anestésica (RPA)', 'Bloqueio neuroaxial', 'Farmacocinética dos anestésicos'.
+            - Priorize segurança do paciente e protocolos ERAS.
+        """,
+        "Oncologia": """
+            - Use critérios RECIST para resposta tumoral.
+            - Foco em: 'Sobrevida Global (OS)', 'Sobrevida Livre de Progressão (PFS)', 'Imunoterápicos'.
+            - Termos obrigatórios: 'Estadiamento TNM', 'Mutação driver', 'Terapia-alvo'.
+        """,
+        "Neurologia": """
+            - Foco em: 'Neuroimagem', 'Déficit focal', 'Escala NIHSS'.
+            - Termos obrigatórios: 'Neuroplasticidade', 'Fisiopatologia sináptica', 'Padrão eletroencefalográfico'.
+        """,
+        "Pediatria": """
+            - Foco em: 'Marcos do desenvolvimento', 'Faixa etária pediátrica'.
+            - Use doses baseadas em mg/kg quando aplicável e referências de Puericultura.
+        """,
+        "Ortopedia": """
+            - Foco em: 'Biomecânica', 'Consolidação óssea', 'Cinética'.
+            - Termos obrigatórios: 'Manejo cirúrgico', 'Redução anatômica', 'Osteossíntese'.
+        """,
+        "Padrao": """
+            - Use rigor científico absoluto e terminologia médica acadêmica de alto nível.
+            - Extraia obrigatoriamente: Metodologia, Tamanho da Amostra (N), P-valor e Intervalo de Confiança.
+            - Mantenha o foco estrito em Medicina Baseada em Evidências (MBE).
         """
     }
     return nuances.get(esp_chave, "- Use jargão médico acadêmico sênior e terminologia DeCS/MeSH padrão.")
@@ -380,18 +427,53 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         
     except Exception as e:
         logging.error(f"Erro ao enviar radar para {destinatario}: {e}")
+
+def traduzir_para_ingles_medico(termo_pt):
+    """Usa a IA para converter termos do médico (PT) para busca no PubMed (EN)"""
+    if not termo_pt: return ""
+    try:
+        # Pede apenas o termo técnico, sem frases extras
+        prompt = f"Translate this medical term from Portuguese to English (MeSH term) for PubMed search. Output ONLY the English term: {termo_pt}"
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        termo_en = response.text.strip()
+        
+        logging.info(f"🌐 Tradução Inteligente: '{termo_pt}' -> '{termo_en}'")
+        
+        # --- A CURA DO ERRO 429 ---
+        # Uma pequena pausa para não sobrecarregar a API gratuita do Google
+        time.sleep(1.5) 
+        
+        return termo_en
+    except Exception as e:
+        logging.error(f"Erro na tradução: {e}")
+        return termo_pt # Se falhar, usa o original mesmo
+    
 def processar_medico_completo(user):
     """Motor Único de Inteligência: PubMed -> Gemini -> PDF -> Envio"""
     nome_medico = user['nome']
     email_cliente = user['email']
     especialidade = user['especialidade']
-    keywords = user['keywords']
-    limite = user['limite']
+    keywords_pt = user['keywords'] # Guardamos o original em PT
+    
+    # 1. Correção do Limite (Segurança para não dar erro se vier texto)
+    try:
+        limite = int(user['limite'])
+    except:
+        limite = 2
+
     whatsapp = user['whatsapp']
     clinica = user['clinica'] if user['clinica'] else "Medical In-Sight"
 
     try:
-        termo_final = f"{especialidade} AND ({keywords})" if keywords else especialidade
+        # 2. Tradução Invisível (PT -> EN)
+        # O robô traduz o que o médico digitou para o inglês antes de buscar
+        keywords_en = traduzir_para_ingles_medico(keywords_pt)
+        especialidade_en = traduzir_para_ingles_medico(especialidade)
+
+        # O termo_final agora fica em INGLÊS para o PubMed encontrar tudo
+        termo_final = f"{especialidade_en} AND ({keywords_en})" if keywords_en else especialidade_en
+        
+        logging.info(f"🔎 Busca Oficial (EN): {termo_final} | Médico digitou: {keywords_pt}")
         
         # --- 1. LÓGICA DE BUSCA EM 3 NÍVEIS (IDÊNTICA À ORIGINAL) ---
         artigos_ineditos = []
