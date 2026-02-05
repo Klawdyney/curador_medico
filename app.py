@@ -46,33 +46,44 @@ client = genai.Client(api_key=MINHA_CHAVE)
 
 # --- FUNÇÕES DE CONTROLE DE HISTÓRICO ---
 
-def artigo_ja_enviado(email_cliente, pubmed_id): # Troquei cliente_id por email_cliente
-    try:
-        with sqlite3.connect('medical_insight.db') as conexao:
-            cursor = conexao.cursor()
-            # Ajuste o nome da coluna na consulta também
-            cursor.execute('SELECT 1 FROM historico_envios WHERE email_cliente = ? AND pubmed_id = ?', (email_cliente, pubmed_id))
-            return cursor.fetchone() is not None
-    except Exception as e:
-        logging.error(f"Erro ao consultar histórico: {e}")
-        return False
+# --- FUNÇÕES DE CONTROLE DE HISTÓRICO (VERSÃO NUVEM SUPABASE) ---
 
-def registrar_envio(email_cliente, pubmed_id, titulo, link):
-    conexao = get_connection() # Usa a ponte inteligente
+def artigo_ja_enviado(email_cliente, pubmed_id):
+    """Verifica no SUPABASE se o artigo já foi enviado."""
+    conexao = get_connection() # Agora usa a conexão da nuvem, não o arquivo local
     try:
         cursor = conexao.cursor()
-        query = '''
-            INSERT INTO historico_envios (email_cliente, pubmed_id, titulo_artigo, link_pubmed) 
-            VALUES (?, ?, ?, ?)
-        '''
-        # Ajuste automático para PostgreSQL se necessário
-        if os.getenv("DATABASE_URL"):
-            query = query.replace('?', '%s')
-            
-        cursor.execute(query, (email_cliente, pubmed_id, titulo, link))
-        conexao.commit()
+        
+        # Query ajustada para PostgreSQL (Supabase usa %s)
+        query = "SELECT 1 FROM historico_envios WHERE email_cliente = %s AND pubmed_id = %s"
+        cursor.execute(query, (email_cliente, str(pubmed_id)))
+        
+        return cursor.fetchone() is not None
     except Exception as e:
-        logging.error(f"Erro ao registrar envio: {e}")
+        logging.error(f"⚠️ Erro ao consultar histórico no Supabase: {e}")
+        return False # Na dúvida, envia (melhor pecar pelo excesso do que pela falta)
+    finally:
+        conexao.close()
+
+def registrar_envio(email_cliente, pubmed_id, titulo, link):
+    """Grava no SUPABASE que o envio foi feito."""
+    conexao = get_connection()
+    try:
+        cursor = conexao.cursor()
+        
+        # Timestamp atual para auditoria
+        data_hoje = time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Inserção correta no PostgreSQL
+        query = '''
+            INSERT INTO historico_envios (email_cliente, pubmed_id, titulo_artigo, link_pubmed, data_envio) 
+            VALUES (%s, %s, %s, %s, %s)
+        '''
+        cursor.execute(query, (email_cliente, str(pubmed_id), titulo, link, data_hoje))
+        conexao.commit()
+        logging.info(f"💾 Histórico salvo no Supabase: {pubmed_id}")
+    except Exception as e:
+        logging.error(f"❌ Erro ao registrar envio no Supabase: {e}")
     finally:
         conexao.close()
 
