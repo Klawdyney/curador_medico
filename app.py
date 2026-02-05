@@ -652,7 +652,11 @@ def main():
             relatorio_final.append(resultado)
     # --- AGORA SIM: FORA DO LOOP, MAS DENTRO DO MAIN ---
     if relatorio_final:
-    # Ajustado para a pasta 'historico_logs'
+        # --- CORREÇÃO: Cria a pasta se ela não existir ---
+        if not os.path.exists("historico_logs"):
+            os.makedirs("historico_logs")
+        # -------------------------------------------------
+        
         nome_arquivo_txt = f"historico_logs/Relatorio_Envios_{time.strftime('%Y%m%d_%H%M%S')}.txt"
         try:
             with open(nome_arquivo_txt, "w", encoding="utf-8") as f:
