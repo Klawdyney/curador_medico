@@ -1,76 +1,91 @@
 import database_manager as db
 from app import processar_medico_completo
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import logging
 import sys
 
 # --- CONFIGURAÇÃO DE LOGS ---
-# Ajustado para exibir logs no painel do GitHub Actions
 logging.basicConfig(
     level=logging.INFO, 
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-def obter_dia_atual_sigla():
-    """Converte o dia da semana para a sigla do banco (seg, ter, etc)."""
-    dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
-    return dias[datetime.now().weekday()]
+def obter_dados_brasil():
+    """
+    Retorna o dia e a hora atuais ajustados para o Fuso Horário de Brasília (UTC-3).
+    """
+    # Pega a hora mundial (UTC) e subtrai 3 horas
+    agora_brasil = datetime.utcnow() - timedelta(hours=3)
+    
+    dias_sigla = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
+    dia_atual = dias_sigla[agora_brasil.weekday()]
+    
+    hora_atual = agora_brasil.strftime("%H:00")
+    
+    return dia_atual, hora_atual
+
+def normalizar_dia_banco(dia_banco):
+    """
+    Traduz o que está no banco (ex: 'Quinta-feira') para a sigla que o sistema usa (ex: 'qui').
+    """
+    if not dia_banco: return ""
+    
+    dia_banco = dia_banco.lower()
+    mapa = {
+        'segunda-feira': 'seg', 'terça-feira': 'ter', 'quarta-feira': 'qua', 
+        'quinta-feira': 'qui', 'sexta-feira': 'sex', 'sábado': 'sab', 'domingo': 'dom',
+        'monday': 'seg', 'tuesday': 'ter', 'wednesday': 'qua', 'thursday': 'qui', 
+        'friday': 'sex', 'saturday': 'sab', 'sunday': 'dom'
+    }
+    
+    # Se já for sigla (ex: 'qui'), retorna ela mesma. Se for nome longo, traduz.
+    return mapa.get(dia_banco, dia_banco[:3])
 
 def tarefa_na_nuvem():
-    """
-    MODO NUVEM: Esta função roda, verifica os agendamentos da hora cheia,
-    processa os envios e FINALIZA. 
-    Não usamos 'while True' aqui para não travar o servidor do GitHub.
-    """
-    print("☁️ INICIANDO TAREFA AGENDADA NA NUVEM...")
+    print("☁️ INICIANDO TAREFA (FUSO BRASIL -3h)...")
     
-    dia_hoje = obter_dia_atual_sigla()
+    # 1. Obtém hora e dia BRASIL
+    dia_hoje, hora_agora = obter_dados_brasil()
     
-    # Pega a hora cheia atual (ex: Se rodar às 14:05, pega "14:00")
-    # Isso garante o sincronismo com o agendamento do GitHub
-    hora_agora = datetime.now().strftime("%H:00")
-    
-    logging.info(f"🔎 Verificando envios para {dia_hoje.upper()} às {hora_agora}...")
+    logging.info(f"📍 Relógio Brasil: {dia_hoje.upper()} às {hora_agora}")
+    logging.info(f"🔎 Buscando agendamentos no banco...")
     
     try:
-        # 1. Busca todos os médicos ativos no Supabase
         medicos = db.buscar_todos_os_medicos_ativos()
+        medicos_processar = []
+
+        # 2. Filtragem Inteligente
+        for m in medicos:
+            # Traduz o dia do banco para sigla para comparar certo
+            dia_medico = normalizar_dia_banco(m.get('dia_envio', ''))
+            hora_medico = m.get('horario_envio', '')
+            
+            # Log de debug para vermos o que ele está lendo
+            # logging.info(f"Checking: {m['nome']} | Dia: {dia_medico} vs {dia_hoje} | Hora: {hora_medico} vs {hora_agora}")
+            
+            if dia_medico == dia_hoje and hora_medico == hora_agora:
+                medicos_processar.append(m)
         
-        # 2. Filtra apenas os médicos agendados para este DIA e HORA
-        medicos_tarefa = [
-            m for m in medicos 
-            if m['dia_envio'] == dia_hoje and m['horario_envio'] == hora_agora
-        ]
-        
-        if not medicos_tarefa:
-            logging.info(f"📭 Nenhum envio programado para agora ({hora_agora}).")
+        if not medicos_processar:
+            logging.info(f"📭 Ninguém agendado para agora ({hora_agora}).")
             return
 
-        logging.info(f"🩺 ENCONTRADO(S): {len(medicos_tarefa)} médico(s). Iniciando processamento...")
+        logging.info(f"🩺 ENCONTRADO(S): {len(medicos_processar)} para envio!")
 
-        for medico in medicos_tarefa:
+        # 3. Processamento
+        for medico in medicos_processar:
             try:
-                logging.info(f"🚀 Iniciando curadoria: Dr(a). {medico['nome']} ({medico['especialidade']})")
-                
-                # Chama a função MESTRA validada do app.py
+                logging.info(f"🚀 Processando: Dr(a). {medico['nome']}")
                 resultado = processar_medico_completo(medico)
-                
-                logging.info(f"🏁 Status Final: {resultado}")
-                
-                # Pausa técnica de 5s para não sobrecarregar APIs
+                logging.info(f"🏁 Resultado: {resultado}")
                 time.sleep(5)
-                
             except Exception as e:
-                logging.error(f"❌ Erro ao processar {medico['nome']}: {e}")
+                logging.error(f"❌ Erro em {medico['nome']}: {e}")
 
     except Exception as e:
-        logging.error(f"⚠️ Erro de conexão com o banco ou processamento geral: {e}")
+        logging.error(f"⚠️ Erro Geral: {e}")
 
 if __name__ == "__main__":
-    # Removemos o 'iniciar_sentinela' e o 'while True'.
-    # Agora ele roda uma vez e encerra, perfeito para automação.
     tarefa_na_nuvem()
