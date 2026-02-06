@@ -286,19 +286,31 @@ class PDF_Personalizado(FPDF):
         self.set_y(50)
 
     def footer(self):
-        # Posiciona a 1,5 cm do fim da página
+        # --- 1. BLINDAGEM JURÍDICA (Fica acima da sua linha) ---
+        # Posiciona 2.5 cm do fim para caber o aviso legal
+        self.set_y(-25) 
+        self.set_font('helvetica', '', 6) # Letra bem pequena e discreta
+        self.set_text_color(160, 160, 160) # Cinza bem claro para não poluir
+        disclaimer = "ISENÇÃO DE RESPONSABILIDADE: Conteúdo gerado por IA para fins estritamente informativos. Não substitui diretrizes oficiais ou julgamento clínico. Verifique as fontes originais."
+        # O multi_cell quebra o texto se for longo e centraliza
+        self.multi_cell(0, 3, text=disclaimer.encode('latin-1', 'replace').decode('latin-1'), align='C')
+        
+        # --- 2. O SEU DESIGN ORIGINAL (Mantido Intacto) ---
+        # Posiciona na altura padrão que você gosta (-1.5 cm)
         self.set_y(-15)
-        # Ajuste 1: Trocamos 'Arial' por 'helvetica' (padrão moderno)
+    
+        # Linha fina separadora
+        self.set_draw_color(200, 200, 200) # Garante a cor cinza da linha
+        self.line(10, self.get_y(), 200, self.get_y())
+        
+        # Configuração da fonte do rodapé
         self.set_font('helvetica', 'I', 8) 
         self.set_text_color(128, 128, 128) 
         
-        # Linha fina separadora
-        self.line(10, self.get_y(), 200, self.get_y())
-        
-        # Ajuste 2: Atualizamos os parâmetros de alinhamento para o padrão fpdf2
+        # Página (Seu código original)
         self.cell(0, 10, f'Página {self.page_no()}', align='L', new_x="RIGHT", new_y="TOP")
         
-        # O Selo de Qualidade
+        # O Selo de Qualidade (Seu texto completo original)
         self.set_text_color(0, 51, 102) 
         self.cell(0, 10, '[ Verified by Medical Expert ] Curadoria Algorítmica | Validação Clínica Humana  ', align='R')
 
@@ -369,6 +381,10 @@ def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
                         Atenciosamente,<br>
                         <strong style="color: #003366;">Curadoria Científica Medical In-Sight</strong>
                     </p>
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 10px; color: #aaa; text-align: center;">
+                        <p>DISCLAIMER: Este e-mail contém resumos gerados por Inteligência Artificial. A decisão clínica é soberana do médico.</p>
+                        <p><a href="#" style="color: #aaa;">Descadastrar (Unsubscribe)</a> - <a href="#" style="color: #aaa;">Termos de Uso</a></p>
+                    </div>
                 </div>
             </body>
         </html>
@@ -425,6 +441,10 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
                         Atenciosamente,<br>
                         <strong style="color: #003366;">Curadoria Científica Medical In-Sight</strong>
                     </p>
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 10px; color: #aaa; text-align: center;">
+                        <p>DISCLAIMER: Este e-mail contém resumos gerados por Inteligência Artificial. A decisão clínica é soberana do médico.</p>
+                        <p><a href="#" style="color: #aaa;">Descadastrar (Unsubscribe)</a> - <a href="#" style="color: #aaa;">Termos de Uso</a></p>
+                    </div>
                 </div>
             </body>
         </html>
@@ -620,6 +640,9 @@ def main():
     # ---------------------------------------------------------
 
     st.title("🏥 Portal Medical In-Sight")
+    # --- BLINDAGEM JURÍDICA (NOVO) ---
+    st.warning("⚠️ Aviso Legal: Esta ferramenta é um auxiliar de pesquisa. A validação clínica final é responsabilidade exclusiva do médico.")
+    # ---------------------------------
 
     # Prepara as opções para o menu visual (substitui o loop de print da imagem)
     opcoes = {f"{info['nome']} - {info['especialidade']}": id_c for id_c, info in clientes.items()}
