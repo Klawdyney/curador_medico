@@ -1,5 +1,4 @@
-streamlit
-google-generativeai
+resend
 google-genai
 python-dotenv
 biopython
@@ -8,5 +7,3 @@ requests
 psycopg2-binary
 pandas
 pillow
-altair
-openai
