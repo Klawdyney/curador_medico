@@ -6,6 +6,10 @@ services:
     startCommand: python worker.py
     envVars:
       - key: GEMINI_API_KEY
+        sync: false
       - key: RESEND_API_KEY
+        sync: false
       - key: DATABASE_URL
+        sync: false
       - key: ENTREZ_EMAIL
+        sync: false
