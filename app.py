@@ -1,4 +1,3 @@
-import streamlit as st  # <-- A LINHA QUE FALTAVA
 import time
 import os
 import smtplib
@@ -6,6 +5,7 @@ import sqlite3
 import re
 import logging
 import requests 
+import resend # Adicione este import no topo do seu app.py
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from google import genai
@@ -31,15 +31,14 @@ load_dotenv()
 # --- CONFIGURAÇÕES ---
 MINHA_CHAVE = os.getenv("GEMINI_API_KEY")
 Entrez.email = os.getenv("ENTREZ_EMAIL")
-EMAIL_DE = os.getenv("EMAIL_REMETENTE")
-SENHA_DE = os.getenv("EMAIL_SENHA")
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 # Configurações futuras de WhatsApp
 WA_API_URL = os.getenv("WHATSAPP_API_URL") 
 WA_API_KEY = os.getenv("WHATSAPP_API_KEY")
-
-if not MINHA_CHAVE or not EMAIL_DE or not SENHA_DE:
-    logging.error("Verifique se as chaves no arquivo .env estão preenchidas corretamente!")
+# Validação Profissional: Agora checa o Resend em vez do Gmail
+if not MINHA_CHAVE or not resend.api_key:
+    logging.error("ERRO: Verifique se GEMINI_API_KEY e RESEND_API_KEY estão no seu .env!")
     exit()
 
 client = genai.Client(api_key=MINHA_CHAVE)
@@ -338,16 +337,12 @@ def buscar_pubmed(tema, limite_busca=20, dias=1460):
 
 def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
     try:
-        # Lógica Dinâmica baseada no tipo de conteúdo
+        # 1. LÓGICA DINÂMICA ORIGINAL PRESERVADA
         titulo_tipo = "Marco Histórico da Medicina" if e_classico else "Boletim de Inteligência Clínica"
         status_texto = "Selecionamos um <strong>estudo clássico fundamental</strong> (Landmark Trial) para sua especialidade, visto que não houve publicações disruptivas recentes." if e_classico else "Identificamos <strong>novas evidências de alto impacto</strong> relevantes para a sua prática clínica."
-        cor_borda = "#003366" if e_classico else "#28a745" # Azul para clássico, Verde para novidade
+        cor_borda = "#003366" if e_classico else "#28a745"
 
-        msg = EmailMessage()
-        msg['Subject'] = f"📚 {titulo_tipo}: Dr(a). {nome_medico}"
-        msg['From'] = EMAIL_DE
-        msg['To'] = email_destino
-
+        # 2. SEU HTML INTEGRAL (Design Premium Mantido)
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -389,29 +384,33 @@ def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
             </body>
         </html>
         """
-        
-        msg.add_alternative(html_content, subtype='html')
 
+        # 3. PREPARAÇÃO DO ANEXO (Formato exigido pelo Resend)
         with open(arquivo_pdf, 'rb') as f:
             file_data = f.read()
-            msg.add_attachment(file_data, maintype='application', subtype='pdf', filename=arquivo_pdf)
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-            smtp.login(EMAIL_DE, SENHA_DE)
-            smtp.send_message(msg)
+        # 4. DISPARO VIA API (Substitui o smtplib.SMTP_SSL que causava erro)
+        resend.Emails.send({
+            "from": "Medical In-Sight <curadoria@medinsight.com.br>",
+            "to": [email_destino],
+            "subject": f"📚 {titulo_tipo}: Dr(a). {nome_medico}",
+            "html": html_content,
+            "attachments": [
+                {
+                    "filename": arquivo_pdf,
+                    "content": list(file_data) # O Resend Python SDK exige lista de bytes
+                }
+            ]
+        })
             
-        logging.info(f"E-mail ({titulo_tipo}) enviado para {email_destino}")
+        logging.info(f"✅ Sucesso Premium: E-mail ({titulo_tipo}) enviado via Resend para {email_destino}")
         
     except Exception as e:
-        logging.error(f"Erro ao enviar e-mail para {email_destino}: {e}")
+        logging.error(f"❌ Erro ao enviar e-mail via Resend para {email_destino}: {e}")
 
 def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
     try:
-        msg = EmailMessage()
-        msg['Subject'] = f"Radar Medical In-Sight: Monitoramento {especialidade}"
-        msg['From'] = EMAIL_DE
-        msg['To'] = destinatario
-        
+        # SEU HTML INTEGRAL E VALIDADO (Design Premium Mantido)
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -450,14 +449,18 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         </html>
         """
         
-        msg.add_alternative(html_content, subtype='html')
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-            smtp.login(EMAIL_DE, SENHA_DE)
-            smtp.send_message(msg)
-        logging.info(f"Radar sem novidades enviado para {destinatario}")
+        # DISPARO VIA API RESEND (Substituindo smtplib e login do Gmail)
+        resend.Emails.send({
+            "from": "Medical In-Sight <curadoria@medinsight.com.br>",
+            "to": [destinatario],
+            "subject": f"Radar Medical In-Sight: Monitoramento {especialidade}",
+            "html": html_content
+        })
+        
+        logging.info(f"✅ Radar sem novidades enviado via Resend para {destinatario}")
         
     except Exception as e:
-        logging.error(f"Erro ao enviar radar para {destinatario}: {e}")
+        logging.error(f"❌ Erro ao enviar radar via Resend para {destinatario}: {e}")
 
 def traduzir_para_ingles_medico(termo_pt):
     """Usa a IA para converter termos do médico (PT) para busca no PubMed (EN)"""
@@ -631,66 +634,12 @@ def processar_medico_completo(user):
         return f"❌ [ERRO] {nome_medico} - Motivo: {e}"
 # --- MAIN ---
 
-def main():
-    clientes = carregar_clientes_do_banco()
-    if not clientes: return
-    
-    # --- NOVO: LISTA PARA ARMAZENAR O STATUS DE CADA MÉDICO ---
-    relatorio_final = []
-    # ---------------------------------------------------------
+# def main():
+#     clientes = carregar_clientes_do_banco()
+#     if not clientes: return
+#     
+#     st.title("🏥 Portal Medical In-Sight")
+#     # ... (as linhas comentadas continuam aqui)
 
-    st.title("🏥 Portal Medical In-Sight")
-    # --- BLINDAGEM JURÍDICA (NOVO) ---
-    st.warning("⚠️ Aviso Legal: Esta ferramenta é um auxiliar de pesquisa. A validação clínica final é responsabilidade exclusiva do médico.")
-    # ---------------------------------
-
-    # Prepara as opções para o menu visual (substitui o loop de print da imagem)
-    opcoes = {f"{info['nome']} - {info['especialidade']}": id_c for id_c, info in clientes.items()}
-    escolha = st.selectbox("Selecione o Cliente:", ["todos"] + list(opcoes.keys()))
-
-    # O botão substitui o input() e impede que o site fique em branco
-    if st.button("🚀 Iniciar Curadoria Científica"):
-    # Define os IDs baseado na escolha do menu
-        ids_para_processar = list(clientes.keys()) if escolha == 'todos' else [opcoes[escolha]]
-
-        for id_c in ids_para_processar:
-            if id_c not in clientes: continue
-            
-            user = clientes[id_c]
-            st.write(f"⚙️ Acionando motor de curadoria: Dr. {user['nome']}...")
-            
-            # CHAMADA CIRÚRGICA: O Python pula para a linha 383, executa tudo e volta.
-            # (A Função Mestra já cuida dos 3 níveis, Gemini, PDF e Envio)
-            resultado = processar_medico_completo(user)
-            
-            # Feedback visual baseado no ícone retornado pela função
-            if "✅" in resultado:
-                st.success(resultado)
-            elif "📡" in resultado:
-                st.info(resultado)
-            else:
-                st.error(resultado)
-                
-            # Registra no relatório de logs que será gravado ao final
-            relatorio_final.append(resultado)
-    # --- AGORA SIM: FORA DO LOOP, MAS DENTRO DO MAIN ---
-    if relatorio_final:
-        # --- CORREÇÃO: Cria a pasta se ela não existir ---
-        if not os.path.exists("historico_logs"):
-            os.makedirs("historico_logs")
-        # -------------------------------------------------
-        
-        nome_arquivo_txt = f"historico_logs/Relatorio_Envios_{time.strftime('%Y%m%d_%H%M%S')}.txt"
-        try:
-            with open(nome_arquivo_txt, "w", encoding="utf-8") as f:
-                f.write("=== RELATÓRIO DE ENTREGAS MEDICAL IN-SIGHT ===\n")
-                f.write(f"Data da Rodada: {time.strftime('%d/%m/%Y %H:%M:%S')}\n")
-                f.write("-" * 45 + "\n\n")
-                for linha in relatorio_final:
-                    f.write(linha + "\n")
-            print(f"\n✅ Relatório detalhado gerado em: {nome_arquivo_txt}")
-        except Exception as e:
-            print(f"\n⚠️ Erro ao gravar o arquivo de relatório: {e}")
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

@@ -13,8 +13,8 @@ ESPECIALIDADES_OFICIAIS = [
 ]
 
 LIMITES_PLANOS = {
-    "Básico": 2,
-    "Estudante": 1,
+    "Básico": 1,
+    "Estudante": 2,
     "Premium": 5,
     "Sob Demanda": 10
 }
@@ -192,7 +192,7 @@ else:
     st.subheader("Nossos Planos")
     p1, p2, p3, p4 = st.columns(4)
     p1.markdown("<div class='plan-card'><b>BÁSICO</b><br>R$ 39,90/mês<br><small>1 Artigos Semanais</small></div>", unsafe_allow_html=True)
-    p2.markdown("<div class='plan-card'><b>ESTUDANTE</b><br>R$ 49,90/mês<br><small>2 Artigo Semanal</small></div>", unsafe_allow_html=True)
+    p2.markdown("<div class='plan-card'><b>ESTUDANTE</b><br>R$ 49,90/mês<br><small>2 Artigos Semanal</small></div>", unsafe_allow_html=True)
     p3.markdown("<div class='plan-card'><b>PREMIUM</b><br>R$ 79,90/mês<br><small>5 Artigos Semanais</small></div>", unsafe_allow_html=True)
     p4.markdown("<div class='plan-card'><b>SOB DEMANDA</b><br>Consulte<br><small>Clínicas/Grupos</small></div>", unsafe_allow_html=True)
 

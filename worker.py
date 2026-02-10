@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import time
 import logging
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 # --- CONFIGURAÇÃO DE LOGS ---
 logging.basicConfig(
@@ -44,7 +45,7 @@ def normalizar_dia_banco(dia_banco):
     return mapa.get(dia_banco, dia_banco[:3])
 
 def tarefa_na_nuvem():
-    print("☁️ INICIANDO TAREFA (FUSO BRASIL -3h)...")
+    logging.info("☁️ INICIANDO TAREFA (FUSO BRASIL -3h)...")
     
     # 1. Obtém hora e dia BRASIL
     dia_hoje, hora_agora = obter_dados_brasil()
@@ -71,21 +72,23 @@ def tarefa_na_nuvem():
         if not medicos_processar:
             logging.info(f"📭 Ninguém agendado para agora ({hora_agora}).")
             return
+# 3. Processamento em Paralelo (Escala Profissional)
+        logging.info(f"🩺 ENCONTRADO(S): {len(medicos_processar)} médicos para envio imediato.")
 
-        logging.info(f"🩺 ENCONTRADO(S): {len(medicos_processar)} para envio!")
-
-        # 3. Processamento
-        for medico in medicos_processar:
-            try:
-                logging.info(f"🚀 Processando: Dr(a). {medico['nome']}")
-                resultado = processar_medico_completo(medico)
-                logging.info(f"🏁 Resultado: {resultado}")
-                time.sleep(5)
-            except Exception as e:
-                logging.error(f"❌ Erro em {medico['nome']}: {e}")
+        try:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                executor.map(processar_medico_completo, medicos_processar)
+            logging.info("✅ Ciclo de processamento paralelo concluído.")
+        except Exception as e:
+            logging.error(f"❌ Erro durante o processamento paralelo: {e}")
 
     except Exception as e:
-        logging.error(f"⚠️ Erro Geral: {e}")
+        logging.error(f"⚠️ Erro Geral no Worker: {e}")
 
 if __name__ == "__main__":
-    tarefa_na_nuvem()
+    logging.info("🚀 Monitor de Escala Iniciado...")
+    while True:
+        tarefa_na_nuvem()
+        # Espera 60 minutos (3600 segundos) antes de checar o próximo horário
+        logging.info("💤 Aguardando próxima verificação horária...")
+        time.sleep(3600)
