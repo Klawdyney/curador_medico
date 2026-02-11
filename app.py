@@ -41,7 +41,7 @@ if not MINHA_CHAVE or not resend.api_key:
     logging.error("ERRO: Verifique se GEMINI_API_KEY e RESEND_API_KEY estão no seu .env!")
     exit()
 
-client = genai.Client(api_key=MINHA_CHAVE)
+client = genai.Client(api_key=MINHA_CHAVE, http_options={'api_version': 'v1'})
 
 # --- FUNÇÕES DE CONTROLE DE HISTÓRICO ---
 
