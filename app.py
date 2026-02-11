@@ -41,7 +41,7 @@ if not MINHA_CHAVE or not resend.api_key:
     logging.error("ERRO: Verifique se GEMINI_API_KEY e RESEND_API_KEY estão no seu .env!")
     exit()
 
-client = genai.Client(api_key=MINHA_CHAVE, http_options={'api_version': 'v1'})
+client = genai.Client(api_key=MINHA_CHAVE)
 
 # --- FUNÇÕES DE CONTROLE DE HISTÓRICO ---
 
@@ -463,28 +463,32 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         logging.error(f"❌ Erro ao enviar radar via Resend para {destinatario}: {e}")
 
 def traduzir_para_ingles_medico(termo_pt):
-    """Usa a IA para converter termos (PT -> EN) com sistema de re-tentativa se a API estiver ocupada."""
+    """Usa a IA para converter termos (PT -> EN) com blindagem dupla de modelos e retries."""
     if not termo_pt: return ""
     
-    for tentativa in range(3): # Tenta até 3 vezes se houver erro de limite
-        try:
-            prompt = f"Translate this medical term from Portuguese to English (MeSH term) for PubMed search. Output ONLY the English term: {termo_pt}"
-            response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
-            termo_en = response.text.strip()
-            
-            logging.info(f"🌐 Tradução Inteligente: '{termo_pt}' -> '{termo_en}'")
-            return termo_en
-            
-        except Exception as e:
-            # Se for erro de velocidade (429), ele espera 5 segundos e tenta de novo
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                logging.warning(f"⚠️ Gemini ocupado na tradução. Tentativa {tentativa + 1}/3. Aguardando 5s...")
-                time.sleep(5)
-            else:
-                logging.error(f"❌ Erro na tradução: {e}")
-                return termo_pt # Se for outro erro, usa o original para não travar
+    # Lista de modelos para fugir de bloqueios regionais ou erros 404
+    modelos_para_tentar = ["gemini-1.5-flash", "gemini-2.0-flash"]
+    
+    for modelo_atual in modelos_para_tentar:
+        for tentativa in range(2): # Tenta 2 vezes cada modelo
+            try:
+                prompt = f"Translate this medical term from Portuguese to English (MeSH term) for PubMed search. Output ONLY the English term: {termo_pt}"
                 
-    return termo_pt # Se esgotar as tentativas, usa o original
+                # Chamada com o modelo da vez
+                response = client.models.generate_content(model=modelo_atual, contents=prompt)
+                termo_en = response.text.strip()
+                
+                logging.info(f"🌐 Tradução Concluída ({modelo_atual}): '{termo_pt}' -> '{termo_en}'")
+                return termo_en
+                
+            except Exception as e:
+                # Se for erro de localização ou modelo não encontrado, ele avisa e tentará o próximo
+                logging.warning(f"⚠️ Falha no modelo {modelo_atual} (Tentativa {tentativa+1}): {e}")
+                time.sleep(2) 
+                
+    # Se todos os modelos falharem, retorna o original para a busca não parar
+    logging.error(f"❌ Todos os modelos de tradução falharam para: {termo_pt}")
+    return termo_pt
     
 def processar_medico_completo(user):
     """Motor Único de Inteligência: PubMed -> Gemini -> PDF -> Envio"""
@@ -566,22 +570,28 @@ def processar_medico_completo(user):
         Termine cada análise estritamente com [PROXIMO_ARTIGO].
         """
         
-        # --- 2. INTELIGÊNCIA GEMINI COM BLINDAGEM DE RETRY ---
+        # --- 2. INTELIGÊNCIA GEMINI COM BLINDAGEM DUPLA (FLASH 1.5 e 2.0) ---
         response = None
-        for tentativa in range(3):
-            try:
-                response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt + bloco_artigos_texto)
-                break # Sucesso! Sai do loop de tentativas
-            except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    logging.warning(f"⚠️ Gemini ocupado no fechamento. Tentativa {tentativa + 1}/3. Aguardando 5s...")
-                    time.sleep(5)
-                else:
-                    logging.error(f"❌ Erro crítico no Gemini: {e}")
-                    return f"❌ [ERRO] {nome_medico} - Falha na IA: {e}"
+        # Lista de modelos para tentar fugir de bloqueios regionais ou 404
+        modelos_para_tentar = ["gemini-1.5-flash", "gemini-2.0-flash"]
+        
+        for modelo_atual in modelos_para_tentar:
+            if response: break # Se já conseguiu, sai do loop de modelos
+            
+            for tentativa in range(2): # Tenta 2 vezes cada modelo
+                try:
+                    logging.info(f"🤖 Tentando análise com o modelo: {modelo_atual}")
+                    response = client.models.generate_content(
+                        model=modelo_atual, 
+                        contents=prompt + bloco_artigos_texto
+                    )
+                    break # Sucesso! Sai do loop de tentativas
+                except Exception as e:
+                    logging.warning(f"⚠️ Erro no modelo {modelo_atual}: {e}")
+                    time.sleep(3) # Pausa curta antes de tentar o próximo
 
         if not response:
-            return f"❌ [ERRO] {nome_medico} - Esgotadas tentativas com a IA."
+            return f"❌ [ERRO] {nome_medico} - Todos os modelos de IA falharam (Localização ou Limite)."
 
         # --- 3. GERAÇÃO DO PDF PREMIUM (SEGUE O CÓDIGO ABAIXO) ---
 
