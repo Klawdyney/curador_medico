@@ -463,24 +463,28 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         logging.error(f"❌ Erro ao enviar radar via Resend para {destinatario}: {e}")
 
 def traduzir_para_ingles_medico(termo_pt):
-    """Usa a IA para converter termos do médico (PT) para busca no PubMed (EN)"""
+    """Usa a IA para converter termos (PT -> EN) com sistema de re-tentativa se a API estiver ocupada."""
     if not termo_pt: return ""
-    try:
-        # Pede apenas o termo técnico, sem frases extras
-        prompt = f"Translate this medical term from Portuguese to English (MeSH term) for PubMed search. Output ONLY the English term: {termo_pt}"
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-        termo_en = response.text.strip()
-        
-        logging.info(f"🌐 Tradução Inteligente: '{termo_pt}' -> '{termo_en}'")
-        
-        # --- A CURA DO ERRO 429 ---
-        # Uma pequena pausa para não sobrecarregar a API gratuita do Google
-        time.sleep(1.5) 
-        
-        return termo_en
-    except Exception as e:
-        logging.error(f"Erro na tradução: {e}")
-        return termo_pt # Se falhar, usa o original mesmo
+    
+    for tentativa in range(3): # Tenta até 3 vezes se houver erro de limite
+        try:
+            prompt = f"Translate this medical term from Portuguese to English (MeSH term) for PubMed search. Output ONLY the English term: {termo_pt}"
+            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            termo_en = response.text.strip()
+            
+            logging.info(f"🌐 Tradução Inteligente: '{termo_pt}' -> '{termo_en}'")
+            return termo_en
+            
+        except Exception as e:
+            # Se for erro de velocidade (429), ele espera 5 segundos e tenta de novo
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                logging.warning(f"⚠️ Gemini ocupado na tradução. Tentativa {tentativa + 1}/3. Aguardando 5s...")
+                time.sleep(5)
+            else:
+                logging.error(f"❌ Erro na tradução: {e}")
+                return termo_pt # Se for outro erro, usa o original para não travar
+                
+    return termo_pt # Se esgotar as tentativas, usa o original
     
 def processar_medico_completo(user):
     """Motor Único de Inteligência: PubMed -> Gemini -> PDF -> Envio"""

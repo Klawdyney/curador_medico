@@ -76,11 +76,14 @@ def tarefa_na_nuvem():
         logging.info(f"🩺 ENCONTRADO(S): {len(medicos_processar)} médicos para envio imediato.")
 
         try:
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                executor.map(processar_medico_completo, medicos_processar)
-            logging.info("✅ Ciclo de processamento paralelo concluído.")
+            # Processamos um por um com pausa para evitar o erro 429
+            for medico in medicos_processar:
+                processar_medico_completo(medico)
+                time.sleep(2)  # Descanso vital de 2 segundos entre cada envio
+                
+            logging.info("✅ Ciclo de processamento sequencial concluído com sucesso.")
         except Exception as e:
-            logging.error(f"❌ Erro durante o processamento paralelo: {e}")
+            logging.error(f"❌ Erro durante o processamento: {e}")
 
     except Exception as e:
         logging.error(f"⚠️ Erro Geral no Worker: {e}")
