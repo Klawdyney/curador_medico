@@ -469,7 +469,7 @@ def traduzir_para_ingles_medico(termo_pt):
     for tentativa in range(3): # Tenta até 3 vezes se houver erro de limite
         try:
             prompt = f"Translate this medical term from Portuguese to English (MeSH term) for PubMed search. Output ONLY the English term: {termo_pt}"
-            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
             termo_en = response.text.strip()
             
             logging.info(f"🌐 Tradução Inteligente: '{termo_pt}' -> '{termo_en}'")
@@ -570,7 +570,7 @@ def processar_medico_completo(user):
         response = None
         for tentativa in range(3):
             try:
-                response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt + bloco_artigos_texto)
+                response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt + bloco_artigos_texto)
                 break # Sucesso! Sai do loop de tentativas
             except Exception as e:
                 if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
