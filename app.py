@@ -566,7 +566,24 @@ def processar_medico_completo(user):
         Termine cada análise estritamente com [PROXIMO_ARTIGO].
         """
         
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt + bloco_artigos_texto)
+        # --- 2. INTELIGÊNCIA GEMINI COM BLINDAGEM DE RETRY ---
+        response = None
+        for tentativa in range(3):
+            try:
+                response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt + bloco_artigos_texto)
+                break # Sucesso! Sai do loop de tentativas
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    logging.warning(f"⚠️ Gemini ocupado no fechamento. Tentativa {tentativa + 1}/3. Aguardando 5s...")
+                    time.sleep(5)
+                else:
+                    logging.error(f"❌ Erro crítico no Gemini: {e}")
+                    return f"❌ [ERRO] {nome_medico} - Falha na IA: {e}"
+
+        if not response:
+            return f"❌ [ERRO] {nome_medico} - Esgotadas tentativas com a IA."
+
+        # --- 3. GERAÇÃO DO PDF PREMIUM (SEGUE O CÓDIGO ABAIXO) ---
 
         # --- 3. GERAÇÃO DO PDF PREMIUM (DESIGN COMPLETO) ---
         pdf = PDF_Personalizado(user); pdf.add_page()
