@@ -93,5 +93,5 @@ if __name__ == "__main__":
     while True:
         tarefa_na_nuvem()
         # Agora ele acorda a cada 1 minuto para checar se mudou a hora
-        logging.info("💤 Aguardando 5 minuto para próxima checagem...")
-        time.sleep(300)
+        logging.info("💤 Aguardando 20 minuto para próxima checagem...")
+        time.sleep(1200)
