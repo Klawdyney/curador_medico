@@ -64,6 +64,24 @@ def artigo_ja_enviado(email_cliente, pubmed_id):
     finally:
         conexao.close()
 
+def boletim_ja_enviado_nesta_hora(email_cliente):
+    """Verifica se o médico já recebeu o boletim na janela de hora atual."""
+    conexao = get_connection()
+    try:
+        cursor = conexao.cursor()
+        # Pega o dia e a hora atual (ex: 2026-02-11 20%)
+        janela_atual = time.strftime('%Y-%m-%d %H') + "%"
+        
+        query = "SELECT 1 FROM historico_envios WHERE email_cliente = %s AND data_envio LIKE %s LIMIT 1"
+        cursor.execute(query, (email_cliente, janela_atual))
+        
+        return cursor.fetchone() is not None
+    except Exception as e:
+        logging.error(f"⚠️ Erro ao checar trava de hora: {e}")
+        return False
+    finally:
+        conexao.close()
+
 def registrar_envio(email_cliente, pubmed_id, titulo, link):
     """Grava no SUPABASE que o envio foi feito."""
     conexao = get_connection()
@@ -491,9 +509,15 @@ def traduzir_para_ingles_medico(termo_pt):
     return termo_pt
     
 def processar_medico_completo(user):
-    """Motor Único de Inteligência: PubMed -> Gemini -> PDF -> Envio"""
+    """Motor Único de Inteligência com Trava de Duplicidade."""
     nome_medico = user['nome']
     email_cliente = user['email']
+    
+    # --- NOVA TRAVA DE SEGURANÇA ---
+    if boletim_ja_enviado_nesta_hora(email_cliente):
+        logging.info(f"⏳ {nome_medico} já recebeu o boletim desta hora. Pulando...")
+        return f"⏳ [PULADO] {nome_medico} já atualizado."
+    # -------------------------------
     especialidade = user['especialidade']
     keywords_pt = user['keywords'] # Guardamos o original em PT
     

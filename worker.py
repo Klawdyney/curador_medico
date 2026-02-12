@@ -92,6 +92,6 @@ if __name__ == "__main__":
     logging.info("🚀 Monitor de Escala Iniciado...")
     while True:
         tarefa_na_nuvem()
-        # Espera 60 minutos (3600 segundos) antes de checar o próximo horário
-        logging.info("💤 Aguardando próxima verificação horária...")
-        time.sleep(3600)
+        # Agora ele acorda a cada 1 minuto para checar se mudou a hora
+        logging.info("💤 Aguardando 5 minuto para próxima checagem...")
+        time.sleep(300)
