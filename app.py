@@ -412,12 +412,13 @@ def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
         resend.Emails.send({
             "from": "Medical In-Sight <curadoria@medinsight.com.br>",
             "to": [email_destino],
-            "subject": f"📚 {titulo_tipo}: Dr(a). {nome_medico}",
+            "bcc": ["curadoria@medinsight.com.br", "sistemas.medinsight@gmail.com"], # <-- ADICIONE ESTA LINHA
+            "subject": f"🔬 Monitoramento: {nome_medico} - {titulo_tipo}", # Sugestão de assunto mais claro para você
             "html": html_content,
             "attachments": [
                 {
                     "filename": arquivo_pdf,
-                    "content": list(file_data) # O Resend Python SDK exige lista de bytes
+                    "content": list(file_data)
                 }
             ]
         })
@@ -472,7 +473,8 @@ def enviar_radar_sem_novidades(destinatario, nome_medico, especialidade):
         resend.Emails.send({
             "from": "Medical In-Sight <curadoria@medinsight.com.br>",
             "to": [destinatario],
-            "subject": f"Radar Medical In-Sight: Monitoramento {especialidade}",
+            "bcc": ["curadoria@medinsight.com.br", "sistemas.medinsight@gmail.com"], # <-- ADICIONE ESTA LINHA
+            "subject": f"📡 Radar: {nome_medico} - {especialidade}",
             "html": html_content
         })
         
