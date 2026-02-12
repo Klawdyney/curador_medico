@@ -65,14 +65,15 @@ def artigo_ja_enviado(email_cliente, pubmed_id):
         conexao.close()
 
 def boletim_ja_enviado_nesta_hora(email_cliente):
-    """Verifica se o médico já recebeu o boletim na janela de hora atual."""
+    """Verifica se o médico já recebeu o boletim na janela de hora atual com ajuste de tipo."""
     conexao = get_connection()
     try:
         cursor = conexao.cursor()
-        # Pega o dia e a hora atual (ex: 2026-02-11 20%)
+        # Gera a janela (ex: '2026-02-12 01%')
         janela_atual = time.strftime('%Y-%m-%d %H') + "%"
         
-        query = "SELECT 1 FROM historico_envios WHERE email_cliente = %s AND data_envio LIKE %s LIMIT 1"
+        # AJUSTE: Adicionado ::text para converter o timestamp em texto antes do LIKE
+        query = "SELECT 1 FROM historico_envios WHERE email_cliente = %s AND data_envio::text LIKE %s LIMIT 1"
         cursor.execute(query, (email_cliente, janela_atual))
         
         return cursor.fetchone() is not None
