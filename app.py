@@ -366,10 +366,14 @@ def enviar_email_pdf(email_destino, nome_medico, arquivo_pdf, e_classico=False):
         cor_borda = "#003366" if e_classico else "#28a745"
 
         # 2. SEU HTML INTEGRAL (Design Premium Mantido)
+        # Definimos o link direto da sua logo no topo da função
+        URL_LOGO = "https://raw.githubusercontent.com/Klawdyney/curador_medico/main/LogoMedical.jpg"
+
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
                 <div style="background-color: #003366; padding: 30px; text-align: center; color: white;">
+                    <img src="{URL_LOGO}" alt="Logo Medical In-Sight" style="height: 70px; margin-bottom: 15px; border-radius: 4px;">
                     <h1 style="margin: 0; font-size: 26px; letter-spacing: 2px;">MEDICAL IN-SIGHT</h1>
                     <p style="margin: 5px 0 0; font-size: 12px; letter-spacing: 1px; opacity: 0.8;">MONITORAMENTO CIENTÍFICO EM TEMPO REAL</p>
                 </div>
