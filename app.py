@@ -496,7 +496,7 @@ def traduzir_para_ingles_medico(termo_pt):
     if not termo_pt: return ""
     
     # Lista de modelos para fugir de bloqueios regionais ou erros 404
-    modelos_para_tentar = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    modelos_para_tentar = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-1.0-pro"]
     
     for modelo_atual in modelos_para_tentar:
         for tentativa in range(2): # Tenta 2 vezes cada modelo
@@ -608,7 +608,7 @@ def processar_medico_completo(user):
         # --- 2. INTELIGÊNCIA GEMINI COM BLINDAGEM DUPLA (FLASH 1.5 e 2.0) ---
         response = None
         # Lista de modelos para tentar fugir de bloqueios regionais ou 404
-        modelos_para_tentar = ["gemini-2.0-flash", "gemini-1.5-flash"]
+        modelos_para_tentar = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-1.0-pro"]
         
         for modelo_atual in modelos_para_tentar:
             if response: break # Se já conseguiu, sai do loop de modelos
