@@ -273,24 +273,27 @@ class PDF_Personalizado(FPDF):
         especialidade = self.cliente['especialidade']
         esp_limpa = especialidade.split(":")[0].strip()
         
-        logo_encontrado = None
+        logo_especialidade = None
         for ext in [".png", ".jpg", ".jpeg"]:
             testes = [f"{esp_limpa}{ext}", f"{esp_limpa.lower()}{ext}", f"{esp_limpa.capitalize()}{ext}"]
             for t in testes:
                 if os.path.exists(t):
-                    logo_encontrado = t
+                    logo_especialidade = t
                     break
-            if logo_encontrado: break
+            if logo_especialidade: break
 
         x_texto = 15 
-        if logo_encontrado:
+        if logo_especialidade:
             try:
-                self.image(logo_encontrado, x=12, y=5, h=32)
-                x_texto = 60 
-            except: pass 
-
+                # O segredo: 'h=30' e um pequeno ajuste na posição para 'esconder' o topo da imagem
+                # onde ficam os textos indesejados da IA
+                self.image(logo_especialidade, x=12, y=7, h=30)
+                x_texto = 55 
+            except: pass
+        if os.path.exists("LogoMedical.png"):
             try:
-                self.image("LogoMedical.jpg", x=160, y=11, h=22) 
+                # Usando x=170 e h=25 para um visual mais leve e flutuante
+                self.image("LogoMedical.png", x=172, y=10, h=25) 
             except: pass
 
         self.set_font("helvetica", 'B', 18)
