@@ -290,7 +290,7 @@ class PDF_Personalizado(FPDF):
             except: pass 
 
             try:
-                self.image("LogoMedical.jpg", x=165, y=7, h=30) 
+                self.image("LogoMedical.jpg", x=160, y=11, h=22) 
             except: pass
 
         self.set_font("helvetica", 'B', 18)
@@ -688,7 +688,8 @@ def processar_medico_completo(user):
                 logging.error(f"Erro no parse do artigo: {e}")
                 continue
 
-        arquivo = f"Boletim_{nome_medico.replace(' ', '_')}.pdf"
+        nome_seguro = re.sub(r'[^\w\s-]', '', nome_medico).strip().replace(' ', '_')
+        arquivo = f"Boletim_{nome_seguro}.pdf"
         pdf.output(arquivo)
         enviar_email_pdf(email_cliente, nome_medico, arquivo, e_classico=contem_classico)
         enviar_whatsapp_curadoria(whatsapp, nome_medico, especialidade)
