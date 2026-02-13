@@ -307,7 +307,7 @@ class PDF_Personalizado(FPDF):
         self.cell(0, 5, text=f"Curadoria Científica para: {clinica_txt}", align='L')
         
         self.set_draw_color(255, 255, 255)
-        self.line(x_texto, 20, 160, 20)
+        self.line(x_texto, 20, 165, 20)
         self.set_y(50)
 
     def footer(self):
