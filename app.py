@@ -289,6 +289,10 @@ class PDF_Personalizado(FPDF):
                 x_texto = 60 
             except: pass 
 
+            try:
+                self.image("LogoMedical.jpg", x=165, y=7, h=30) 
+            except: pass
+
         self.set_font("helvetica", 'B', 18)
         self.set_text_color(255, 255, 255)
         self.set_xy(x_texto, 12)
@@ -300,7 +304,7 @@ class PDF_Personalizado(FPDF):
         self.cell(0, 5, text=f"Curadoria Científica para: {clinica_txt}", align='L')
         
         self.set_draw_color(255, 255, 255)
-        self.line(x_texto, 20, 200, 20)
+        self.line(x_texto, 20, 160, 20)
         self.set_y(50)
 
     def footer(self):
