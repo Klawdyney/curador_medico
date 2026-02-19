@@ -82,3 +82,18 @@ def buscar_todos_os_medicos_ativos():
     except Exception as e:
         print(f"Erro ao buscar médicos ativos: {e}")
         return []
+    
+def atualizar_primeiro_envio(email, status):
+    """
+    Desativa o gatilho de primeiro envio após o sucesso.
+    """
+    query = "UPDATE clientes SET primeiro_envio = %s WHERE email = %s"
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (status, email))
+                conn.commit()
+                return True
+    except Exception as e:
+        print(f"Erro ao atualizar status: {e}")
+        return False
