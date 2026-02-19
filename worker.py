@@ -63,11 +63,21 @@ def tarefa_na_nuvem():
             dia_medico = normalizar_dia_banco(m.get('dia_envio', ''))
             hora_medico = m.get('horario_envio', '')
             
-            # Log de debug para vermos o que ele está lendo
-            # logging.info(f"Checking: {m['nome']} | Dia: {dia_medico} vs {dia_hoje} | Hora: {hora_medico} vs {hora_agora}")
-            
-            if dia_medico == dia_hoje and hora_medico == hora_agora:
+            # Verifica se é o horário agendado OU se é o primeiro envio imediato
+            e_dia_hora = (dia_medico == dia_hoje and hora_medico == hora_agora)
+            e_primeiro = m.get('primeiro_envio') == True
+
+            if e_dia_hora or e_primeiro:
+                if e_primeiro:
+                    logging.info(f"🚀 ENVIO IMEDIATO detectado para {m['nome']} ({m['email']})")
+                else:
+                    logging.info(f"✅ HORA DE DISPARAR agendamento para {m['nome']}")
+                
                 medicos_processar.append(m)
+                
+                # Se for o primeiro envio, desativamos o gatilho no banco
+                if e_primeiro:
+                    db.atualizar_primeiro_envio(m['email'], False)
         
         if not medicos_processar:
             logging.info(f"📭 Ninguém agendado para agora ({hora_agora}).")
