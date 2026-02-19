@@ -1,4 +1,4 @@
-import database_manager as db
+import database_manager as db  # O "as db" é o que permite usar db.funcao()
 from app import processar_medico_completo
 from datetime import datetime, timedelta
 import time
