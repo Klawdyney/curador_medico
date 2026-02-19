@@ -88,7 +88,15 @@ def tarefa_na_nuvem():
         try:
             # Processamos um por um com pausa para evitar o erro 429
             for medico in medicos_processar:
+                inicio_processo = time.time()  # Inicia o cronômetro
+                logging.info(f"⏳ Iniciando curadoria para: {medico['nome']}")
+                
                 processar_medico_completo(medico)
+                
+                fim_processo = time.time()    # Para o cronômetro
+                duracao = fim_processo - inicio_processo
+                logging.info(f"✅ Sucesso para {medico['nome']} (Tempo: {duracao:.2f} segundos)")
+                
                 time.sleep(2)  # Descanso vital de 2 segundos entre cada envio
                 
             logging.info("✅ Ciclo de processamento sequencial concluído com sucesso.")
@@ -102,6 +110,6 @@ if __name__ == "__main__":
     logging.info("🚀 Monitor de Escala Iniciado...")
     while True:
         tarefa_na_nuvem()
-        # Agora ele acorda a cada 1 minuto para checar se mudou a hora
+        # Agora ele acorda a cada 2 minuto para checar se mudou a hora
         logging.info("💤 Aguardando 20 minuto para próxima checagem...")
-        time.sleep(1200)
+        time.sleep(120)
