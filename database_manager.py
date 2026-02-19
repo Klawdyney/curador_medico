@@ -71,14 +71,17 @@ def atualizar_perfil_medico(email_original, novos_dados):
 
 # --- FUNÇÕES PARA O ROBÔ (WORKER) ---
 
-def buscar_todos_os_medicos_ativos():
-    """Retorna a lista de médicos para o processamento do robô worker.py."""
-    query = "SELECT * FROM clientes WHERE ativo = TRUE"
+def atualizar_primeiro_envio(email, status):
+    """
+    Atualiza a coluna primeiro_envio para False após o envio de boas-vindas.
+    """
+    query = "UPDATE clientes SET primeiro_envio = %s WHERE email = %s"
     try:
         with get_connection() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(query)
-                return cur.fetchall()
+            with conn.cursor() as cur:
+                cur.execute(query, (status, email))
+                conn.commit()
+                return True
     except Exception as e:
-        print(f"Erro ao buscar médicos ativos: {e}")
-        return []
+        print(f"Erro ao atualizar primeiro_envio: {e}")
+        return False
