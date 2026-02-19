@@ -66,9 +66,12 @@ def tarefa_na_nuvem():
             # Log de debug para vermos o que ele está lendo
             # logging.info(f"Checking: {m['nome']} | Dia: {dia_medico} vs {dia_hoje} | Hora: {hora_medico} vs {hora_agora}")
             
-            if dia_medico == dia_hoje and hora_medico == hora_agora:
+            # Se for o dia/hora OU se for o primeiro envio de um novo cadastro
+            if (dia_medico == dia_hoje and hora_medico == hora_agora) or m.get('primeiro_envio') == True:
                 medicos_processar.append(m)
-        
+                # Depois de processar, precisamos avisar o banco que o primeiro já foi!
+                db.atualizar_primeiro_envio(m['email'], False)
+                    
         if not medicos_processar:
             logging.info(f"📭 Ninguém agendado para agora ({hora_agora}).")
             return
