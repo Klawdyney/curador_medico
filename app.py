@@ -299,7 +299,12 @@ class PDF_Personalizado(FPDF):
         self.set_font("helvetica", 'B', 18)
         self.set_text_color(255, 255, 255)
         self.set_xy(x_texto, 12)
-        self.cell(0, 10, text="MEDICAL IN-SIGHT PREMIUM", align='L')
+        # Pega o plano que veio do banco. Se não tiver nada, assume 'Academic' por segurança.
+        plano_exibicao = self.cliente.get('plano', 'Academic')
+
+        # Define o título dinâmico (ex: MEDICAL IN-SIGHT CLINICAL)
+        self.set_font("helvetica", 'B', 18)
+        self.cell(0, 10, text=f"MEDICAL IN-SIGHT {plano_exibicao.upper()}", align='L')
         
         self.set_font("helvetica", 'I', 10)
         self.set_xy(x_texto, 22)
