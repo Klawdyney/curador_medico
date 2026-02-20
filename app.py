@@ -32,6 +32,8 @@ load_dotenv()
 MINHA_CHAVE = os.getenv("GEMINI_API_KEY")
 Entrez.email = os.getenv("ENTREZ_EMAIL")
 resend.api_key = os.getenv("RESEND_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 # Configurações futuras de WhatsApp
 WA_API_URL = os.getenv("WHATSAPP_API_URL") 
@@ -83,25 +85,36 @@ def boletim_ja_enviado_nesta_hora(email_cliente):
     finally:
         conexao.close()
 
-def registrar_envio(email_cliente, pubmed_id, titulo, link):
-    """Grava no SUPABASE que o envio foi feito."""
+def fazer_upload_pdf_supabase(caminho_local, nome_arquivo):
+    """Faz upload do PDF para o Storage usando API direta (sem erros de C++)."""
+    url = f"{SUPABASE_URL}/storage/v1/object/boletins_medicos/{nome_arquivo}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "ApiKey": SUPABASE_KEY,
+        "Content-Type": "application/pdf"
+    }
+    try:
+        with open(caminho_local, 'rb') as f:
+            response = requests.post(url, headers=headers, data=f, timeout=20)
+        if response.status_code == 200:
+            return f"{SUPABASE_URL}/storage/v1/object/public/boletins_medicos/{nome_arquivo}"
+        return None
+    except Exception as e:
+        logging.error(f"❌ Erro no upload: {e}"); return None
+
+def registrar_envio(email_cliente, pubmed_id, titulo, link, url_pdf): # <-- Novo parâmetro url_pdf
     conexao = get_connection()
     try:
         cursor = conexao.cursor()
-        
-        # Timestamp atual para auditoria
         data_hoje = time.strftime('%Y-%m-%d %H:%M:%S')
-        
-        # Inserção correta no PostgreSQL
         query = '''
-            INSERT INTO historico_envios (email_cliente, pubmed_id, titulo_artigo, link_pubmed, data_envio) 
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO historico_envios (email_cliente, pubmed_id, titulo_artigo, link_pubmed, url_pdf, data_envio) 
+            VALUES (%s, %s, %s, %s, %s, %s)
         '''
-        cursor.execute(query, (email_cliente, str(pubmed_id), titulo, link, data_hoje))
+        cursor.execute(query, (email_cliente, str(pubmed_id), titulo, link, url_pdf, data_hoje))
         conexao.commit()
-        logging.info(f"💾 Histórico salvo no Supabase: {pubmed_id}")
     except Exception as e:
-        logging.error(f"❌ Erro ao registrar envio no Supabase: {e}")
+        logging.error(f"❌ Erro ao registrar histórico: {e}")
     finally:
         conexao.close()
 
@@ -689,20 +702,31 @@ def processar_medico_completo(user):
                 
                 pdf.set_x(15); pdf.set_font("helvetica", 'B', 9); pdf.set_text_color(0, 102, 204)
                 pdf.cell(0, 8, text=">> ACESSAR ESTUDO COMPLETO NO PUBMED <<", link=artigos_para_enviar[i]['link'], align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-                
-                registrar_envio(email_cliente, artigos_para_enviar[i]['id'], titulo, artigos_para_enviar[i]['link'])
+                # O registrar_envio que estava aqui foi removido
                 pdf.ln(10)
             except Exception as e:
                 logging.error(f"Erro no parse do artigo: {e}")
                 continue
 
+        # 1. Gera o arquivo físico do PDF
         nome_seguro = re.sub(r'[^\w\s-]', '', nome_medico).strip().replace(' ', '_')
         arquivo = f"Boletim_{nome_seguro}.pdf"
         pdf.output(arquivo)
+
+        # 2. Faz o upload e pega a URL (Usa o link do PubMed como plano B se falhar)
+        url_gerada_pdf = fazer_upload_pdf_supabase(arquivo, arquivo)
+        if not url_gerada_pdf:
+            url_gerada_pdf = artigos_para_enviar[0]['link']
+
+        # 3. Agora registra cada artigo no banco (Corrigido: 'in' em vez de 'em')
+        for i, art in enumerate(artigos_para_enviar):
+            registrar_envio(email_cliente, art['id'], "Boletim Médico Curado", art['link'], url_gerada_pdf)
+
+        # 4. Finaliza com as notificações por e-mail e WhatsApp
         enviar_email_pdf(email_cliente, nome_medico, arquivo, e_classico=contem_classico)
         enviar_whatsapp_curadoria(whatsapp, nome_medico, especialidade)
         
-        return f"✅ [SUCESSO] {nome_medico} - E-mail enviado."
+        return f"✅ [SUCESSO] {nome_medico} - E-mail e Storage atualizados."
 
     except Exception as e:
         logging.error(f"Erro crítico: {e}")
