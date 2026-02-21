@@ -89,7 +89,7 @@ def fazer_upload_pdf_supabase(caminho_local, nome_arquivo):
     """Versão Detetive: Tenta ler as chaves direto do sistema no momento do envio."""
     # 1. Tenta ler direto do ambiente agora (ignora o que foi lido no topo do arquivo)
     url_sistema = os.getenv("SUPABASE_URL")
-    key_sistema = os.getenv("SUPABASE_KEY")
+    key_sistema = os.getenv("SUPABASE_SERVICE_KEY")
 
     # 2. Se continuar vindo None, vamos listar o que existe para depurar
     if not url_sistema:
