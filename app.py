@@ -86,21 +86,39 @@ def boletim_ja_enviado_nesta_hora(email_cliente):
         conexao.close()
 
 def fazer_upload_pdf_supabase(caminho_local, nome_arquivo):
-    """Faz upload do PDF para o Storage usando API direta (sem erros de C++)."""
-    url = f"{SUPABASE_URL}/storage/v1/object/boletins_medicos/{nome_arquivo}"
+    """Versão Detetive: Tenta ler as chaves direto do sistema no momento do envio."""
+    # 1. Tenta ler direto do ambiente agora (ignora o que foi lido no topo do arquivo)
+    url_sistema = os.getenv("SUPABASE_URL")
+    key_sistema = os.getenv("SUPABASE_KEY")
+
+    # 2. Se continuar vindo None, vamos listar o que existe para depurar
+    if not url_sistema:
+        logging.error("🚨 ERRO CRÍTICO: SUPABASE_URL não encontrada no sistema!")
+        # Lista as chaves que o Python consegue ver (ajuda a achar erros de digitação)
+        chaves_disponiveis = [k for k in os.environ.keys() if "SUPABASE" in k]
+        logging.info(f"🔍 Chaves similares encontradas no Render: {chaves_disponiveis}")
+        return None
+
+    url = f"{url_sistema}/storage/v1/object/boletins_medicos/{nome_arquivo}"
     headers = {
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "ApiKey": SUPABASE_KEY,
+        "Authorization": f"Bearer {key_sistema}",
+        "ApiKey": key_sistema,
         "Content-Type": "application/pdf"
     }
+    
     try:
         with open(caminho_local, 'rb') as f:
             response = requests.post(url, headers=headers, data=f, timeout=20)
+        
         if response.status_code == 200:
-            return f"{SUPABASE_URL}/storage/v1/object/public/boletins_medicos/{nome_arquivo}"
-        return None
+            logging.info(f"✅ PDF enviado com sucesso: {nome_arquivo}")
+            return f"{url_sistema}/storage/v1/object/public/boletins_medicos/{nome_arquivo}"
+        else:
+            logging.error(f"❌ Erro na resposta do Supabase: {response.status_code} - {response.text}")
+            return None
     except Exception as e:
-        logging.error(f"❌ Erro no upload: {e}"); return None
+        logging.error(f"❌ Falha de conexão no upload: {e}")
+        return None
 
 def registrar_envio(email_cliente, pubmed_id, titulo, link, url_pdf): # <-- Novo parâmetro url_pdf
     conexao = get_connection()
