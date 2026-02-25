@@ -104,6 +104,7 @@ def fazer_upload_pdf_supabase(caminho_local, nome_arquivo):
         "Authorization": f"Bearer {key_sistema}",
         "ApiKey": key_sistema,
         "Content-Type": "application/pdf"
+        "x-upsert": "true"  # <--- ESTA LINHA É A MÁGICA
     }
     
     try:
