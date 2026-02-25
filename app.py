@@ -741,7 +741,7 @@ def processar_medico_completo(user):
 
         # 3. Agora registra cada artigo no banco (Corrigido: 'in' em vez de 'em')
         for i, art in enumerate(artigos_para_enviar):
-            registrar_envio(email_cliente, art['id'], "Boletim Médico Curado", art['link'], url_gerada_pdf)
+            registrar_envio(email_cliente, art['id'], titulo, art['link'], url_gerada_pdf)
 
         # 4. Finaliza com as notificações por e-mail e WhatsApp
         enviar_email_pdf(email_cliente, nome_medico, arquivo, e_classico=contem_classico)
