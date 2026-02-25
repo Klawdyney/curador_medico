@@ -128,6 +128,8 @@ def registrar_envio(email_cliente, pubmed_id, titulo, link, url_pdf): # <-- Novo
         query = '''
             INSERT INTO historico_envios (email_cliente, pubmed_id, titulo_artigo, link_pubmed, url_pdf, data_envio) 
             VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (email_cliente, pubmed_id) DO UPDATE 
+            SET url_pdf = EXCLUDED.url_pdf, data_envio = EXCLUDED.data_envio
         '''
         cursor.execute(query, (email_cliente, str(pubmed_id), titulo, link, url_pdf, data_hoje))
         conexao.commit()
